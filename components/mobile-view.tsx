@@ -130,17 +130,7 @@ export default function MobileView({
         className="flex flex-col flex-1 min-h-0 overflow-hidden transition-[filter] duration-300"
         style={{ filter: navOpen ? "blur(5px)" : "none" }}
       >
-        {/* Brand bar */}
-        <div className="flex items-center px-2 py-4 flex-shrink-0 bg-sidebar">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
-              <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
-            </div>
-            <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
-          </div>
-        </div>
-
-        {/* Date / time bar */}
+          {/* Date / time bar */}
         <div className="flex items-center justify-between pl-2 pr-4 py-4 border-b border-border flex-shrink-0">
           <div>
             <p className="text-[10px] font-normal tracking-[0.15em] text-muted-foreground uppercase">
@@ -263,15 +253,6 @@ export default function MobileView({
         )}
       </div>
 
-      {/* Nav trigger — bottom left, above overview sheet */}
-      <button
-        className="absolute left-4 z-10 p-2 rounded-full bg-background/90 backdrop-blur-sm border border-sidebar-border text-muted-foreground hover:text-foreground transition-colors"
-        style={{ bottom: "72px" }}
-        onClick={() => setNavOpen(true)}
-      >
-        <PanelBottom className="w-4 h-4" />
-      </button>
-
       {/* Nav backdrop — tap to close */}
       {navOpen && (
         <div
@@ -284,7 +265,7 @@ export default function MobileView({
       <div
         className="absolute left-4 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-20 flex flex-col gap-0 transition-all duration-200 w-64 pt-1 pb-2"
         style={{
-          bottom: "120px",
+          bottom: "68px",
           opacity: navOpen ? 1 : 0,
           pointerEvents: navOpen ? "auto" : "none",
           transform: navOpen ? "translateY(0)" : "translateY(6px)",
@@ -454,6 +435,22 @@ export default function MobileView({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Bottom brand bar — always on top, nav trigger on right */}
+      <div className="relative z-30 flex-shrink-0 flex items-center px-3 py-3 bg-sidebar border-t border-sidebar-border">
+        <div className="flex items-center gap-2.5 flex-1">
+          <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
+            <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
+          </div>
+          <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
+        </div>
+        <button
+          onClick={() => setNavOpen(!navOpen)}
+          className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        >
+          <PanelBottom className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
