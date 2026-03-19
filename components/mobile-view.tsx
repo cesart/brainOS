@@ -311,7 +311,7 @@ export default function MobileView({
                   onClick={() => setAgendaView(id)}
                   className={`flex-1 py-1 rounded-md text-[11px] font-medium transition-colors capitalize ${
                     agendaView === id
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
                   }`}
                 >
