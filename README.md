@@ -18,7 +18,11 @@ This started as a personal itch: I wanted a single place that surfaces what I ne
 
 ## Stack
 
-Next.js 14 · TypeScript · Tailwind CSS · shadcn/ui · Airtable API · Framer Motion · Deployed on Vercel
+Next.js 14 · TypeScript · Tailwind CSS · shadcn/ui · Airtable API · Deployed on Vercel · Framer Motion
+
+### Typography
+- [Mona Sans](https://fonts.google.com/specimen/Mona+Sans): A strong and versatile typeface, designed together with Degarism and inspired by industrial-era grotesques. A variable font made custom for GitHub.
+- [DM Mono](https://fonts.google.com/specimen/DM+Mono): A three weight, three style family designed for DeepMind. The type design and font development was commissioned from Colophon Foundry, with Creative Direction from the DeepMind team.
 
 ---
 
