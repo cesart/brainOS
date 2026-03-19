@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import UnicornScene from "unicornstudio-react/next";
 import { OTPInput } from "./otp-input";
+import { LoginLayout } from "./login-layout";
 
 async function login(formData: FormData) {
   "use server";
@@ -25,7 +26,7 @@ export default function LoginPage({
   searchParams: { error?: string };
 }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+    <LoginLayout>
       <div className="flex flex-col items-center w-full max-w-[360px] border border-border rounded-3xl overflow-hidden">
         {/* Scene — centered, fixed size */}
         <div className="pt-8">
@@ -46,6 +47,6 @@ export default function LoginPage({
           <OTPInput action={login} error={!!searchParams.error} />
         </div>
       </div>
-    </div>
+    </LoginLayout>
   );
 }
