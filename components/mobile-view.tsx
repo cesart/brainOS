@@ -65,11 +65,13 @@ export default function MobileView({
   const completed = allTasks.filter((t) => t.completed);
 
   const sheetHeight = sheetUp ? SHEET_UP : SHEET_PEEK;
+
   const touchStartY = useRef(0);
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartY.current = e.touches[0].clientY;
   }
+
   function handleTouchEnd(e: React.TouchEvent) {
     const delta = e.changedTouches[0].clientY - touchStartY.current;
     if (delta > 40) setSheetUp(false);
@@ -77,20 +79,15 @@ export default function MobileView({
   }
 
   return (
-    <div className="h-dvh overflow-hidden bg-background flex flex-col">
+    <div className="relative h-dvh overflow-hidden bg-background flex flex-col">
 
-      {/* ── NAV PANEL ─────────────────────────────────────────────
-          Always in-flow at top. Expands to show Agenda + Modes.
-          When open: rounded bottom corners, content squishes below. */}
+      {/* Main content — blurs when nav is open */}
       <div
-        className="flex-shrink-0 bg-sidebar relative z-20 overflow-hidden"
-        style={{
-          borderRadius: navOpen ? "0 0 20px 20px" : "0",
-          transition: "border-radius 300ms",
-        }}
+        className="flex flex-col flex-1 min-h-0 overflow-hidden transition-[filter] duration-300"
+        style={{ filter: navOpen ? "blur(5px)" : "none" }}
       >
-        {/* Brand row — always visible */}
-        <div className="flex items-center justify-between px-3 py-4">
+        {/* Brand bar */}
+        <div className="flex items-center justify-between px-2 py-4 flex-shrink-0 bg-sidebar">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
               <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
@@ -98,119 +95,15 @@ export default function MobileView({
             <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
           </div>
           <button
-            onClick={() => setNavOpen((v) => !v)}
+            onClick={() => setNavOpen(true)}
             className="text-muted-foreground p-1"
           >
             <PanelTop className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Expandable Agenda + Modes */}
-        <div
-          className="overflow-hidden"
-          style={{
-            maxHeight: navOpen ? "600px" : "0",
-            transition: "max-height 300ms ease-in-out",
-          }}
-        >
-          {/* Agenda section */}
-          <div className="flex-shrink-0">
-            <div className="flex items-center justify-between px-3 py-2.5 border-t border-sidebar-border">
-              <div className="flex items-center gap-2">
-                <NotebookPen className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-sm font-medium text-sidebar-foreground">Agenda</span>
-              </div>
-              <button className="text-muted-foreground p-0.5">
-                <EllipsisVertical className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-0.5 px-2 py-1">
-              {weekDates.map((date) => {
-                const isActive = date === activeDate;
-                const isToday  = date === todayISO;
-                const label    = getDayLabel(date, todayISO);
-                return (
-                  <button
-                    key={date}
-                    onClick={() => { onSelectDate(date); setNavOpen(false); }}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left w-full transition-colors ${
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                        : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                    }`}
-                  >
-                    {isToday
-                      ? <CalendarCheck className="w-4 h-4 flex-shrink-0" />
-                      : <Calendar className="w-4 h-4 flex-shrink-0" />
-                    }
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Modes section */}
-          <div className="flex-shrink-0 pb-3">
-            <div className="flex items-center justify-between px-3 py-2.5 border-t border-sidebar-border">
-              <div className="flex items-center gap-2">
-                <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="text-sm font-medium text-sidebar-foreground">Modes</span>
-              </div>
-              <button className="text-muted-foreground p-0.5">
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-0.5 px-2 py-1">
-              <button
-                onClick={() => { onSelectMode(null); setNavOpen(false); }}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs w-full transition-colors ${
-                  activeModeId === null
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-accent-foreground flex-shrink-0" />
-                <span className="flex-1 text-left">All</span>
-                <span className="tabular-nums">{items.length}</span>
-              </button>
-              {collections.map((col, i) => (
-                <button
-                  key={col.id}
-                  onClick={() => { onSelectMode(col.id); setNavOpen(false); }}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs w-full transition-colors ${
-                    activeModeId === col.id
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                  }`}
-                >
-                  <span
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ background: MODE_COLORS[i] ?? "#6366f1" }}
-                  />
-                  <span className="flex-1 text-left">{col.name}</span>
-                  <span className="tabular-nums">
-                    {items.filter((it) => it.collectionIds?.includes(col.id)).length}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── MAIN CONTENT ──────────────────────────────────────────
-          flex-1 so it fills remaining space below the nav panel.
-          Blurs when nav is open. */}
-      <div
-        className="flex flex-col flex-1 min-h-0 overflow-hidden"
-        style={{
-          filter: navOpen ? "blur(4px)" : "none",
-          transition: "filter 300ms",
-        }}
-      >
         {/* Date / time bar */}
-        <div className="flex items-center justify-between pl-3 pr-4 py-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center justify-between pl-2 pr-4 py-4 border-b border-border flex-shrink-0">
           <div>
             <p className="text-[10px] font-normal tracking-[0.15em] text-muted-foreground uppercase">
               {activeDate === todayISO
@@ -237,14 +130,13 @@ export default function MobileView({
         />
       </div>
 
-      {/* ── BOTTOM SHEET ──────────────────────────────────────────
-          In-flow at bottom. Pill when minimized, card when expanded. */}
+      {/* Bottom sheet — in-flow spacer that grows/shrinks */}
       <div
-        className="flex-shrink-0 mx-4 mb-0 bg-background border border-sidebar-border overflow-hidden"
+        className="flex-shrink-0 mx-4 mb-0 bg-background border border-sidebar-border overflow-hidden transition-all duration-300"
         style={{
           height: sheetHeight,
           borderRadius: sheetUp ? "16px" : "9999px",
-          filter: navOpen ? "blur(4px)" : "none",
+          filter: navOpen ? "blur(5px)" : "none",
           transition: "height 300ms, border-radius 300ms, filter 300ms",
         }}
         onTouchStart={handleTouchStart}
@@ -333,15 +225,108 @@ export default function MobileView({
         )}
       </div>
 
-      {/* ── BACKDROP ──────────────────────────────────────────────
-          Intercepts taps on blurred content to close nav.
-          z-10 sits above main content but below nav panel (z-20). */}
+      {/* Nav backdrop — tap to close */}
       {navOpen && (
         <div
           className="absolute inset-0 z-10"
           onClick={() => setNavOpen(false)}
         />
       )}
+
+      {/* Nav panel — dropdown from top bar, content height */}
+      <div
+        className="absolute right-4 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-20 flex flex-col gap-0 transition-all duration-200 w-64 pt-1 pb-2"
+        style={{
+          top: "16px",
+          opacity: navOpen ? 1 : 0,
+          pointerEvents: navOpen ? "auto" : "none",
+          transform: navOpen ? "translateY(0)" : "translateY(-6px)",
+        }}
+      >
+        {/* Agenda section */}
+        <div className="flex-shrink-0">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-sidebar-border">
+            <div className="flex items-center gap-2">
+              <NotebookPen className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-sm font-medium text-sidebar-foreground">Agenda</span>
+            </div>
+            <button className="text-muted-foreground p-0.5">
+              <EllipsisVertical className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-0.5 px-1 py-1">
+            {weekDates.map((date) => {
+              const isActive = date === activeDate;
+              const isToday  = date === todayISO;
+              const label    = getDayLabel(date, todayISO);
+              return (
+                <button
+                  key={date}
+                  onClick={() => { onSelectDate(date); setNavOpen(false); }}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left w-full transition-colors ${
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  }`}
+                >
+                  {isToday
+                    ? <CalendarCheck className="w-4 h-4 flex-shrink-0" />
+                    : <Calendar className="w-4 h-4 flex-shrink-0" />
+                  }
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Modes section */}
+        <div className="flex-shrink-0">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-sidebar-border">
+            <div className="flex items-center gap-2">
+              <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-sm font-medium text-sidebar-foreground">Modes</span>
+            </div>
+            <button className="text-muted-foreground p-0.5">
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex flex-col gap-0.5 px-1 py-1">
+            <button
+              onClick={() => { onSelectMode(null); setNavOpen(false); }}
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs w-full transition-colors ${
+                activeModeId === null
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-accent-foreground flex-shrink-0" />
+              <span className="flex-1 text-left">All</span>
+              <span className="tabular-nums">{items.length}</span>
+            </button>
+            {collections.map((col, i) => (
+              <button
+                key={col.id}
+                onClick={() => { onSelectMode(col.id); setNavOpen(false); }}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs w-full transition-colors ${
+                  activeModeId === col.id
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                }`}
+              >
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ background: MODE_COLORS[i] ?? "#6366f1" }}
+                />
+                <span className="flex-1 text-left">{col.name}</span>
+                <span className="tabular-nums">
+                  {items.filter((it) => it.collectionIds?.includes(col.id)).length}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
