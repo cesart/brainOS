@@ -150,9 +150,9 @@ export default function MobileView({
         className="flex-shrink-0 mx-4 mb-2 bg-background border border-border overflow-hidden"
         style={{
           height: sheetHeight,
-          borderRadius: sheetUp ? "16px" : "9999px",
+          borderRadius: "16px",
           filter: navOpen ? "blur(5px)" : "none",
-          transition: "height 280ms cubic-bezier(0.4,0,0.2,1), border-radius 280ms cubic-bezier(0.4,0,0.2,1), filter 300ms",
+          transition: "height 280ms cubic-bezier(0.4,0,0.2,1), filter 300ms",
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
