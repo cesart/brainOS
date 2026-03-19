@@ -1,0 +1,95 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #0c0a09;
+    --card: #ffffff;
+    --card-foreground: #0c0a09;
+    --popover: #ffffff;
+    --popover-foreground: #0c0a09;
+    --primary: #1c1917;
+    --primary-foreground: #fafaf9;
+    --secondary: #f5f5f4;
+    --secondary-foreground: #1c1917;
+    --muted: #f5f5f4;
+    --muted-foreground: #79716b;
+    --accent: #f5f5f4;
+    --accent-foreground: #1c1917;
+    --destructive: #e7000b;
+    --destructive-foreground: #f8fafc;
+    --border: #e7e5e4;
+    --input: #e7e5e4;
+    --ring: #a6a09b;
+    --radius: 0.45rem;
+    --chart-1: #bbf451;
+    --chart-2: #7ccf00;
+    --chart-3: #5ea500;
+    --chart-4: #497d00;
+    --chart-5: #3c6300;
+    --sidebar: #fafaf9;
+    --sidebar-foreground: #0c0a09;
+    --sidebar-primary: #1c1917;
+    --sidebar-primary-foreground: #fafaf9;
+    --sidebar-accent: #f5f5f4;
+    --sidebar-accent-foreground: #1c1917;
+    --sidebar-border: #e7e5e4;
+    --sidebar-ring: #a6a09b;
+  }
+
+  .dark {
+    --background: #0c0a09;
+    --foreground: #fafaf9;
+    --card: #1c1917;
+    --card-foreground: #fafaf9;
+    --popover: #1c1917;
+    --popover-foreground: #fafaf9;
+    --primary: #e7e5e4;
+    --primary-foreground: #1c1917;
+    --secondary: #292524;
+    --secondary-foreground: #fafaf9;
+    --muted: #44403c;
+    --muted-foreground: #a8a29e;
+    --accent: #292524;
+    --accent-foreground: #fafaf9;
+    --destructive: #ff6467;
+    --destructive-foreground: #f8fafc;
+    --border: #ffffff1a;
+    --input: #ffffff26;
+    --ring: #79716b;
+    --chart-1: #bbf451;
+    --chart-2: #7ccf00;
+    --chart-3: #5ea500;
+    --chart-4: #497d00;
+    --chart-5: #3c6300;
+    --sidebar: #1c1917;
+    --sidebar-foreground: #fafaf9;
+    --sidebar-primary: #1447e6;
+    --sidebar-primary-foreground: #fafaf9;
+    --sidebar-accent: #292524;
+    --sidebar-accent-foreground: #fafaf9;
+    --sidebar-border: #ffffff1a;
+    --sidebar-ring: #79716b;
+  }
+
+  * {
+    @apply border-border outline-ring;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  :root {
+    --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif, ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace, ui-monospace, monospace;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
