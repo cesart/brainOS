@@ -112,7 +112,7 @@ export default function MobileView({
   }
 
   return (
-    <div className="relative h-dvh overflow-hidden bg-background flex flex-col">
+    <div className="relative h-screen overflow-hidden bg-background flex flex-col">
 
       {/* Main content — blurs when nav is open */}
       <div
