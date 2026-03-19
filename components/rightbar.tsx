@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, ClipboardClock, Square, SquareCheck } from "lucide-react";
+import { Calendar, ClipboardList, Square, SquareCheck } from "lucide-react";
 import { motion, LayoutGroup } from "framer-motion";
 import { AirtableItem } from "@/lib/airtable";
 
@@ -75,7 +75,7 @@ export default function RightBar({ events, tasks, todayISO, onToggleTask }: Righ
     <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto">
       {/* Overview header */}
       <div className="flex items-center gap-2 px-3 py-3 border-b border-border flex-shrink-0">
-        <ClipboardClock className="w-3.5 h-3.5 text-muted-foreground" />
+        <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
         <span className="text-sm font-medium text-foreground">Overview</span>
       </div>
 

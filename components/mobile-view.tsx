@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Brain, PanelBottom, Calendar, CalendarCheck,
   Layers, NotebookPen,
-  ClipboardClock, Square, SquareCheck,
+  ClipboardList, Square, SquareCheck,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Sun, Moon, Smartphone,
 } from "lucide-react";
@@ -170,7 +170,7 @@ export default function MobileView({
           >
             <div className="w-20 h-1 rounded-full bg-sidebar-border" />
           </div>
-          <ClipboardClock className="w-4 h-4 text-muted-foreground" />
+          <ClipboardList className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium text-foreground">Overview</span>
         </button>
 
