@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Brain, PanelBottom, Calendar, CalendarCheck,
   Layers, NotebookPen,
-  Glasses, Square, SquareCheck,
+  ClipboardClock, Square, SquareCheck,
   ChevronLeft, ChevronRight,
   Sun, Moon, Smartphone,
 } from "lucide-react";
@@ -173,7 +173,7 @@ export default function MobileView({
           <div
             className={`flex items-center gap-2 px-4 ${sheetUp ? "py-2.5 border-b border-sidebar-border" : "h-full"}`}
           >
-            <Glasses className="w-4 h-4 text-muted-foreground" />
+            <ClipboardClock className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">Overview</span>
           </div>
         </button>
