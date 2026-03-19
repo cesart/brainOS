@@ -37,7 +37,7 @@ function parseInline(text: string): React.ReactNode {
         if (buf) { segments.push(<span key={key++}>{buf}</span>); buf = ""; }
         const url = urlMatch[0];
         segments.push(
-          <a key={key++} href={url} className="text-lime-400 underline" target="_blank" rel="noopener noreferrer">
+          <a key={key++} href={url} className="text-primary underline" target="_blank" rel="noopener noreferrer">
             {url}
           </a>
         );
@@ -60,7 +60,7 @@ function parseInline(text: string): React.ReactNode {
           if (buf) { segments.push(<span key={key++}>{buf}</span>); buf = ""; }
           const href = `https://${candidate}`;
           segments.push(
-            <a key={key++} href={href} className="text-lime-400 underline" target="_blank" rel="noopener noreferrer">
+            <a key={key++} href={href} className="text-primary underline" target="_blank" rel="noopener noreferrer">
               {candidate}
             </a>
           );
@@ -119,7 +119,7 @@ function parseInline(text: string): React.ReactNode {
           const href = text.slice(closeBracket + 2, closeParen);
           if (buf) { segments.push(<span key={key++}>{buf}</span>); buf = ""; }
           segments.push(
-            <a key={key++} href={href} className="text-lime-400 underline" target="_blank" rel="noopener noreferrer">
+            <a key={key++} href={href} className="text-primary underline" target="_blank" rel="noopener noreferrer">
               {linkText}
             </a>
           );
