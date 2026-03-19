@@ -257,7 +257,6 @@ const MarkdownView = React.forwardRef<HTMLDivElement, { body: string }>(
 export default function Editor({ dayId, initialBody, events, className }: EditorProps) {
   const [body, setBody] = useState(initialBody);
   const [atBottom, setAtBottom] = useState(false);
-  const [kbOffset, setKbOffset] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const markdownRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef(body);
@@ -267,19 +266,6 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
   useEffect(() => {
     bodyRef.current = body;
   }, [body]);
-
-  // Track keyboard height on iOS via visualViewport (mobile only)
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    function update() {
-      if (window.matchMedia("(min-width: 768px)").matches) { setKbOffset(0); return; }
-      setKbOffset(Math.max(0, window.innerHeight - vv!.offsetTop - vv!.height));
-    }
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
-  }, []);
 
   useEffect(() => {
     setBody(initialBody);
@@ -559,19 +545,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
       </div>
 
       {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (right) */}
-      {/* On iOS, fixed above keyboard when kbOffset > 0 */}
-      <div
-        className="flex flex-row flex-nowrap overflow-x-auto items-center md:flex-col md:overflow-visible md:items-end gap-2 px-2 py-2 md:py-4 flex-shrink-0 md:static"
-        style={kbOffset > 0 ? {
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: kbOffset,
-          zIndex: 50,
-          backgroundColor: "var(--background)",
-          borderTop: "1px solid var(--border)",
-        } : {}}
-      >
+      <div className="flex flex-row flex-nowrap overflow-x-auto items-center md:flex-col md:overflow-visible md:items-end gap-2 px-2 py-2 md:py-4 flex-shrink-0">
         {tools.map((tool) => (
           <button
             key={tool.label}

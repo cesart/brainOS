@@ -112,7 +112,7 @@ export default function MobileView({
   }
 
   return (
-    <div className="relative h-screen overflow-hidden bg-background flex flex-col">
+    <div className="relative h-dvh overflow-hidden bg-background flex flex-col">
 
       {/* Main content — blurs when nav is open */}
       <div
@@ -147,7 +147,7 @@ export default function MobileView({
 
       {/* Bottom sheet — in-flow spacer */}
       <div
-        className="flex-shrink-0 mx-4 mb-2 bg-background border border-border overflow-hidden"
+        className="flex-shrink-0 mx-2 mb-2 bg-background border border-border overflow-hidden"
         style={{
           height: sheetHeight,
           borderRadius: "16px",
