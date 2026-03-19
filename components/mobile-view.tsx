@@ -159,14 +159,17 @@ export default function MobileView({
       >
         {/* Handle + Overview header */}
         <button
-          className="w-full flex-shrink-0"
+          className="w-full flex-shrink-0 flex flex-col"
           style={{ height: SHEET_PEEK }}
           onClick={() => setSheetUp(!sheetUp)}
         >
-          <div className="flex justify-center pt-2 pb-1" style={{ opacity: sheetUp ? 1 : 0, transition: "opacity 150ms" }}>
+          <div
+            className="flex justify-center pt-2 pb-1 flex-shrink-0"
+            style={{ opacity: sheetUp ? 1 : 0, height: sheetUp ? "auto" : 0, overflow: "hidden", transition: "opacity 150ms" }}
+          >
             <div className="w-20 h-1 rounded-full bg-sidebar-border" />
           </div>
-          <div className={`flex items-center gap-2 px-4 ${sheetUp ? "pb-2 border-b border-sidebar-border" : "h-full"}`}>
+          <div className={`flex items-center gap-2 px-4 flex-1 ${sheetUp ? "pb-2 border-b border-sidebar-border" : ""}`}>
             <ClipboardClock className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">Overview</span>
           </div>
