@@ -18,8 +18,8 @@ const MODE_COLORS: Record<number, string> = {
   3: "#a855f7", 4: "#ef4444", 5: "#06b6d4",
 };
 
-const SHEET_PEEK = 56;
-const SHEET_UP   = 360;
+// const SHEET_PEEK = 56;
+// const SHEET_UP   = 360;
 
 function pad2(n: number): string { return String(n).padStart(2, "0"); }
 function addDays(dateISO: string, n: number): string {
@@ -62,7 +62,8 @@ export default function MobileView({
   dayEvents, allTasks, onToggleTask,
 }: MobileViewProps) {
   const [navOpen, setNavOpen] = useState(false);
-  const [sheetUp, setSheetUp] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  // const [sheetUp, setSheetUp] = useState(false);
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [weekViewStart, setWeekViewStart] = useState(todayISO);
   const [calMonth, setCalMonth] = useState(() => {
@@ -97,19 +98,13 @@ export default function MobileView({
   const noDate    = allTasks.filter((t) => !t.completed && !t.dueDate);
   const completed = allTasks.filter((t) => t.completed);
 
-  const sheetHeight = sheetUp ? SHEET_UP : SHEET_PEEK;
-
-  const touchStartY = useRef(0);
-
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartY.current = e.touches[0].clientY;
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    const delta = e.changedTouches[0].clientY - touchStartY.current;
-    if (delta > 40) setSheetUp(false);
-    else if (delta < -40) setSheetUp(true);
-  }
+  // const sheetHeight = sheetUp ? SHEET_UP : SHEET_PEEK;
+  // const touchStartY = useRef(0);
+  // function handleTouchStart(e: React.TouchEvent) { touchStartY.current = e.touches[0].clientY; }
+  // function handleTouchEnd(e: React.TouchEvent) {
+  //   const delta = e.changedTouches[0].clientY - touchStartY.current;
+  //   if (delta > 40) setSheetUp(false); else if (delta < -40) setSheetUp(true);
+  // }
 
   return (
     <div className="relative h-dvh overflow-hidden bg-background flex flex-col">
@@ -145,108 +140,82 @@ export default function MobileView({
         />
       </div>
 
-      {/* Bottom sheet — in-flow spacer */}
-      <div
-        className="flex-shrink-0 mx-2 mb-2 bg-background border border-border overflow-hidden"
-        style={{
-          height: sheetHeight,
-          borderRadius: "16px",
-          filter: navOpen ? "blur(5px)" : "none",
-          transition: "height 280ms cubic-bezier(0.4,0,0.2,1), filter 300ms",
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Handle + Overview header */}
-        <button
-          className="relative w-full flex-shrink-0 flex items-center gap-2 px-4"
-          style={{ height: SHEET_PEEK, borderBottom: sheetUp ? "1px solid var(--sidebar-border)" : "none" }}
-          onClick={() => setSheetUp(!sheetUp)}
-        >
-          {/* Handle — absolutely positioned, never affects content layout */}
-          <div
-            className="absolute top-2 left-0 right-0 flex justify-center"
-            style={{ opacity: sheetUp ? 1 : 0, transition: "opacity 150ms" }}
-          >
-            <div className="w-20 h-1 rounded-full bg-sidebar-border" />
-          </div>
-          <ClipboardList className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Overview</span>
-        </button>
-
-        {/* Scrollable content — always mounted so parent height animates smoothly */}
-        <div
-          className="overflow-y-auto flex flex-col gap-4 p-2"
-          style={{
-            maxHeight: SHEET_UP - SHEET_PEEK,
-            opacity: sheetUp ? 1 : 0,
-            transition: "opacity 200ms",
-          }}
-        >
-            {dayEvents.length > 0 && (
-              <section>
-                <div className="flex items-center gap-1.5 px-1.5 pb-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
-                  <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Events</p>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {dayEvents.map((event) => (
-                    <div key={event.id} className="flex items-center gap-2.5 px-1.5 py-2 rounded-md">
-                      <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm text-foreground flex-1 min-w-0 truncate">{event.name}</span>
-                      {event.dueDate && (
-                        <span className="text-sm text-muted-foreground tabular-nums flex-shrink-0">
-                          {new Date(event.dueDate + "T00:00:00").toLocaleDateString("en-US", {
-                            month: "short", day: "numeric",
-                          })}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {allTasks.length > 0 && (
-              <section>
-                <div className="flex items-center gap-1.5 px-1.5 pb-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completed].map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
-                      style={t.completed ? { opacity: 0.75 } : {}}
-                      onClick={() => onToggleTask(t.id, !t.completed)}
-                    >
-                      {t.completed
-                        ? <SquareCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                        : <Square className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                      }
-                      <span className={`text-sm leading-snug ${t.completed ? "text-muted-foreground" : "text-foreground"}`}>
-                        {t.name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {dayEvents.length === 0 && allTasks.length === 0 && (
-              <p className="text-sm text-muted-foreground/50 text-center py-8">Nothing here yet.</p>
-            )}
-        </div>
-      </div>
-
-      {/* Nav backdrop — tap to close */}
-      {navOpen && (
+      {/* Nav/Overview backdrop — tap to close */}
+      {(navOpen || overviewOpen) && (
         <div
           className="absolute inset-0 z-20"
-          onClick={() => setNavOpen(false)}
+          onClick={() => { setNavOpen(false); setOverviewOpen(false); }}
         />
       )}
+
+      {/* Overview popup — above brand bar, right-aligned */}
+      <div
+        className="absolute right-3 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-40 w-72 transition-all duration-200"
+        style={{
+          bottom: "72px",
+          opacity: overviewOpen ? 1 : 0,
+          pointerEvents: overviewOpen ? "auto" : "none",
+          transform: overviewOpen ? "translateY(0)" : "translateY(6px)",
+          maxHeight: "60dvh",
+        }}
+      >
+        <div className="flex items-center gap-2 px-3 py-3 border-b border-sidebar-border flex-shrink-0">
+          <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Overview</span>
+        </div>
+        <div className="overflow-y-auto flex flex-col gap-4 p-2">
+          {dayEvents.length > 0 && (
+            <section>
+              <div className="flex items-center gap-1.5 px-1.5 pb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Events</p>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {dayEvents.map((event) => (
+                  <div key={event.id} className="flex items-center gap-2.5 px-1.5 py-2 rounded-md">
+                    <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-foreground flex-1 min-w-0 truncate">{event.name}</span>
+                    {event.dueDate && (
+                      <span className="text-sm text-muted-foreground tabular-nums flex-shrink-0">
+                        {new Date(event.dueDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {allTasks.length > 0 && (
+            <section>
+              <div className="flex items-center gap-1.5 px-1.5 pb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completed].map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
+                    style={t.completed ? { opacity: 0.75 } : {}}
+                    onClick={() => onToggleTask(t.id, !t.completed)}
+                  >
+                    {t.completed
+                      ? <SquareCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      : <Square className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    }
+                    <span className={`text-sm leading-snug ${t.completed ? "text-muted-foreground" : "text-foreground"}`}>
+                      {t.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {dayEvents.length === 0 && allTasks.length === 0 && (
+            <p className="text-sm text-muted-foreground/50 text-center py-8">Nothing here yet.</p>
+          )}
+        </div>
+      </div>
 
       {/* Nav panel — slides up from bottom-right */}
       <div
@@ -433,12 +402,20 @@ export default function MobileView({
           </div>
           <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
         </div>
-        <button
-          onClick={() => setNavOpen(!navOpen)}
-          className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-        >
-          <PanelBottom className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => { setOverviewOpen(!overviewOpen); setNavOpen(false); }}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          >
+            <ClipboardList className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setNavOpen(!navOpen); setOverviewOpen(false); }}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          >
+            <PanelBottom className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
