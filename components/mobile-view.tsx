@@ -147,7 +147,7 @@ export default function MobileView({
 
       {/* Bottom sheet — in-flow spacer */}
       <div
-        className="flex-shrink-0 mx-4 mb-2 bg-background border border-sidebar-border overflow-hidden"
+        className="flex-shrink-0 mx-4 mb-2 bg-background border border-border overflow-hidden"
         style={{
           height: sheetHeight,
           borderRadius: sheetUp ? "16px" : "9999px",
