@@ -27,12 +27,12 @@ export default function LoginPage({
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
       <div className="flex flex-col items-center w-full max-w-[360px] border border-border rounded-2xl overflow-hidden">
-        {/* Scene — flush to card edges, no padding */}
-        <div className="w-full">
+        {/* Scene — centered, fixed size */}
+        <div className="pt-8">
           <UnicornScene
             projectId="iHobY0fcDE7oTK9pZRAo"
             sdkUrl="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.1.4/dist/unicornStudio.umd.js"
-            width="100%"
+            width="120px"
             height="120px"
           />
         </div>
