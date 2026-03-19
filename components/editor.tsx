@@ -117,13 +117,13 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
       </div>
 
       {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (right) */}
-      <div className="flex flex-wrap md:flex-col md:flex-nowrap items-end gap-2 px-2 py-4 border-t border-border md:border-t-0 md:border-l flex-shrink-0">
+      <div className="flex flex-wrap md:flex-col md:flex-nowrap items-end gap-2 px-2 py-4 flex-shrink-0">
         {tools.map((tool) => (
           <button
             key={tool.label}
             onClick={tool.action}
             title={tool.label}
-            className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
           >
             {tool.icon}
           </button>
