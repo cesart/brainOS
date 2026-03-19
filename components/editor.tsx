@@ -172,17 +172,19 @@ function MarkdownLine({ line }: { line: string }) {
   const iconCls = "absolute left-0 top-[4px] w-[14px] h-[14px] text-muted-foreground";
 
   if (h1Match) return (
-    <p className="font-bold text-foreground">
+    <p className="relative font-bold text-foreground">
+      <span className="absolute bottom-0 left-0 right-0 h-px bg-border/60 pointer-events-none" />
       <Pfx content={h1Match[1]} />{parseInline(h1Match[1])}
     </p>
   );
   if (h2Match) return (
-    <p className="font-semibold text-foreground">
+    <p className="relative font-semibold text-foreground/90">
+      <span className="absolute left-0 top-[3px] bottom-[3px] w-0.5 bg-primary/50 rounded-full pointer-events-none" />
       <Pfx content={h2Match[1]} />{parseInline(h2Match[1])}
     </p>
   );
   if (h3Match) return (
-    <p className="font-medium text-muted-foreground">
+    <p className="font-medium text-muted-foreground/80">
       <Pfx content={h3Match[1]} />{parseInline(h3Match[1])}
     </p>
   );

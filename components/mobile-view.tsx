@@ -122,10 +122,8 @@ export default function MobileView({
           {/* Date / time bar */}
         <div className="flex items-center justify-between pl-2 pr-4 py-4 border-b border-border flex-shrink-0">
           <div>
-            <p className="text-[10px] font-normal tracking-[0.15em] text-muted-foreground uppercase">
-              {activeDate === todayISO
-                ? "Today"
-                : new Date(activeDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "long" })}
+            <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${activeDate === todayISO ? "opacity-100" : "opacity-35"}`}>
+              {activeDate === todayISO ? "Today" : activeDate < todayISO ? "Past" : "Future"}
             </p>
             <h1 className="text-2xl font-bold leading-tight">
               {new Date(activeDate + "T00:00:00").toLocaleDateString("en-US", {
@@ -133,7 +131,7 @@ export default function MobileView({
               })}
             </h1>
           </div>
-          <span className="text-[13px] font-semibold text-muted-foreground tabular-nums font-mono">
+          <span className="text-[12px] text-muted-foreground tabular-nums font-mono">
             <Clock />
           </span>
         </div>
@@ -149,12 +147,12 @@ export default function MobileView({
 
       {/* Bottom sheet — in-flow spacer */}
       <div
-        className="flex-shrink-0 mx-4 mb-2 bg-background border border-sidebar-border overflow-hidden transition-all duration-300"
+        className="flex-shrink-0 mx-4 mb-2 bg-background border border-sidebar-border overflow-hidden"
         style={{
           height: sheetHeight,
           borderRadius: sheetUp ? "16px" : "9999px",
           filter: navOpen ? "blur(5px)" : "none",
-          transition: "height 300ms, border-radius 300ms, filter 300ms",
+          transition: "height 280ms cubic-bezier(0.4,0,0.2,1), border-radius 280ms cubic-bezier(0.4,0,0.2,1), filter 300ms",
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -165,25 +163,24 @@ export default function MobileView({
           style={{ height: SHEET_PEEK }}
           onClick={() => setSheetUp(!sheetUp)}
         >
-          {sheetUp && (
-            <div className="flex justify-center pt-2 pb-2">
-              <div className="w-20 h-1.5 rounded-full bg-sidebar-border" />
-            </div>
-          )}
-          <div
-            className={`flex items-center gap-2 px-4 ${sheetUp ? "py-2.5 border-b border-sidebar-border" : "h-full"}`}
-          >
+          <div className="flex justify-center pt-2 pb-1" style={{ opacity: sheetUp ? 1 : 0, transition: "opacity 150ms" }}>
+            <div className="w-20 h-1 rounded-full bg-sidebar-border" />
+          </div>
+          <div className={`flex items-center gap-2 px-4 ${sheetUp ? "pb-2 border-b border-sidebar-border" : "h-full"}`}>
             <ClipboardClock className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">Overview</span>
           </div>
         </button>
 
-        {/* Scrollable content */}
-        {sheetUp && (
-          <div
-            className="overflow-y-auto flex flex-col gap-4 p-2"
-            style={{ maxHeight: SHEET_UP - SHEET_PEEK }}
-          >
+        {/* Scrollable content — always mounted so parent height animates smoothly */}
+        <div
+          className="overflow-y-auto flex flex-col gap-4 p-2"
+          style={{
+            maxHeight: SHEET_UP - SHEET_PEEK,
+            opacity: sheetUp ? 1 : 0,
+            transition: "opacity 200ms",
+          }}
+        >
             {dayEvents.length > 0 && (
               <section>
                 <div className="flex items-center gap-1.5 px-1.5 pb-2">
@@ -238,8 +235,7 @@ export default function MobileView({
             {dayEvents.length === 0 && allTasks.length === 0 && (
               <p className="text-sm text-muted-foreground/50 text-center py-8">Nothing here yet.</p>
             )}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Nav backdrop — tap to close */}
