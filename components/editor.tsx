@@ -79,21 +79,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
   ];
 
   return (
-    <div className={`flex flex-col-reverse md:flex-row flex-1 overflow-hidden border-r border-border${className ? ` ${className}` : ""}`}>
-      {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (left) */}
-      <div className="flex flex-wrap md:flex-col md:flex-nowrap items-center gap-2 px-2 py-3 border-t border-border md:border-t-0 md:border-r flex-shrink-0 md:justify-start md:items-start">
-        {tools.map((tool) => (
-          <button
-            key={tool.label}
-            onClick={tool.action}
-            title={tool.label}
-            className="flex items-center justify-center p-2 rounded-md text-xs text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
-          >
-            {tool.icon}
-          </button>
-        ))}
-      </div>
-
+    <div className={`flex flex-col md:flex-row flex-1 overflow-hidden border-r border-border${className ? ` ${className}` : ""}`}>
       <div className="flex flex-col flex-1 overflow-hidden">
         <textarea
           ref={textareaRef}
@@ -128,6 +114,20 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
             </div>
           </div>
         )}
+      </div>
+
+      {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (right) */}
+      <div className="flex flex-wrap md:flex-col md:flex-nowrap items-center gap-1.5 px-1.5 py-3 border-t border-border md:border-t-0 md:border-l flex-shrink-0 md:justify-start md:items-center">
+        {tools.map((tool) => (
+          <button
+            key={tool.label}
+            onClick={tool.action}
+            title={tool.label}
+            className="flex items-center justify-center p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            {tool.icon}
+          </button>
+        ))}
       </div>
     </div>
   );
