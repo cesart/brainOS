@@ -19,11 +19,7 @@ const SHEET_PEEK = 56;
 const SHEET_UP   = 360;
 
 function getDayLabel(date: string, todayISO: string): string {
-  const d = new Date(todayISO + "T00:00:00");
-  d.setDate(d.getDate() - 1);
-  const yesterdayISO = d.toISOString().slice(0, 10);
   if (date === todayISO) return "Today";
-  if (date === yesterdayISO) return "Yesterday";
   return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "short", month: "short", day: "numeric",
   });
@@ -132,7 +128,7 @@ export default function MobileView({
 
       {/* Bottom sheet — in-flow spacer that grows/shrinks */}
       <div
-        className="flex-shrink-0 mx-4 mb-0 bg-background border border-sidebar-border overflow-hidden transition-all duration-300"
+        className="flex-shrink-0 mx-4 mb-2 bg-background border border-sidebar-border overflow-hidden transition-all duration-300"
         style={{
           height: sheetHeight,
           borderRadius: sheetUp ? "16px" : "9999px",
@@ -149,7 +145,7 @@ export default function MobileView({
           onClick={() => setSheetUp(!sheetUp)}
         >
           {sheetUp && (
-            <div className="flex justify-center pt-2 pb-1">
+            <div className="flex justify-center pt-2 pb-2">
               <div className="w-20 h-1.5 rounded-full bg-sidebar-border" />
             </div>
           )}

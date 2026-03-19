@@ -7,6 +7,14 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "brainOS",
   description: "brainOS is a personal life management system.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "brainOS",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

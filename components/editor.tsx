@@ -23,18 +23,58 @@ interface ToolDef {
 export default function Editor({ dayId, initialBody, events, className }: EditorProps) {
   const [body, setBody] = useState(initialBody);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef(body);
+  const savedRef = useRef(initialBody);
+  const dayIdRef = useRef(dayId);
+
+  useEffect(() => {
+    bodyRef.current = body;
+  }, [body]);
 
   useEffect(() => {
     setBody(initialBody);
+    savedRef.current = initialBody;
+    dayIdRef.current = dayId;
   }, [dayId, initialBody]);
 
-  async function handleBlur() {
-    await fetch(`/api/days/${dayId}`, {
+  async function save() {
+    if (bodyRef.current === savedRef.current) return;
+    savedRef.current = bodyRef.current;
+    await fetch(`/api/days/${dayIdRef.current}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body: bodyRef.current }),
     });
   }
+
+  // Save on blur, page hide, and every 5s while dirty
+  useEffect(() => {
+    const onVisibilityChange = () => { if (document.visibilityState === "hidden") save(); };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const saveInterval = setInterval(save, 5000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      clearInterval(saveInterval);
+    };
+  }, []);
+
+  // Poll for remote changes every 5s when not focused
+  useEffect(() => {
+    const syncInterval = setInterval(async () => {
+      if (document.activeElement === textareaRef.current) return;
+      const res = await fetch(`/api/days/${dayIdRef.current}`);
+      if (!res.ok) return;
+      const day = await res.json();
+      const remote = day.body ?? "";
+      // Only sync from remote if we have no local unsaved changes
+      if (remote !== savedRef.current && bodyRef.current === savedRef.current) {
+        savedRef.current = remote;
+        bodyRef.current = remote;
+        setBody(remote);
+      }
+    }, 5000);
+    return () => clearInterval(syncInterval);
+  }, []);
 
   function wrapSelection(prefix: string, suffix = "") {
     const el = textareaRef.current;
@@ -42,6 +82,31 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
     const start = el.selectionStart;
     const end = el.selectionEnd;
     const selected = body.slice(start, end);
+    // Toggle off if already wrapped (check surrounding characters)
+    const before = body.slice(start - prefix.length, start);
+    const after = body.slice(end, end + suffix.length);
+    if (before === prefix && after === suffix) {
+      const newValue = body.slice(0, start - prefix.length) + selected + body.slice(end + suffix.length);
+      setBody(newValue);
+      requestAnimationFrame(() => {
+        el.selectionStart = start - prefix.length;
+        el.selectionEnd = end - prefix.length;
+        el.focus();
+      });
+      return;
+    }
+    // Toggle off if selection includes the wrappers
+    if (selected.startsWith(prefix) && selected.endsWith(suffix) && selected.length > prefix.length + suffix.length) {
+      const inner = selected.slice(prefix.length, selected.length - suffix.length);
+      const newValue = body.slice(0, start) + inner + body.slice(end);
+      setBody(newValue);
+      requestAnimationFrame(() => {
+        el.selectionStart = start;
+        el.selectionEnd = start + inner.length;
+        el.focus();
+      });
+      return;
+    }
     const newValue = body.slice(0, start) + prefix + selected + suffix + body.slice(end);
     setBody(newValue);
     requestAnimationFrame(() => {
@@ -56,6 +121,16 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
     if (!el) return;
     const start = el.selectionStart;
     const lineStart = body.lastIndexOf("\n", start - 1) + 1;
+    // Toggle off if line already has this prefix
+    if (body.slice(lineStart, lineStart + prefix.length) === prefix) {
+      const newValue = body.slice(0, lineStart) + body.slice(lineStart + prefix.length);
+      setBody(newValue);
+      requestAnimationFrame(() => {
+        el.selectionStart = el.selectionEnd = Math.max(lineStart, start - prefix.length);
+        el.focus();
+      });
+      return;
+    }
     const newValue = body.slice(0, lineStart) + prefix + body.slice(lineStart);
     setBody(newValue);
     requestAnimationFrame(() => {
@@ -85,7 +160,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
           ref={textareaRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          onBlur={handleBlur}
+          onBlur={save}
           placeholder="Just start typing today…"
           className="flex-1 bg-transparent resize-none outline-none p-2 leading-relaxed text-foreground placeholder:text-muted"
         />
