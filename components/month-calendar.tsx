@@ -1,7 +1,5 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
 interface MonthCalendarProps {
   year: number;
   month: number; // 0-indexed
@@ -9,13 +7,7 @@ interface MonthCalendarProps {
   todayISO: string;
   showWeekends: boolean;
   onSelectDate: (date: string) => void;
-  onMonthChange: (year: number, month: number) => void;
 }
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -26,16 +18,16 @@ function generateCells(year: number, month: number, showWeekends: boolean): (str
   const cells: (string | null)[] = [];
 
   if (showWeekends) {
-    // 7-col grid, Mon=0..Sun=6
-    const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+    // 7-col grid, Sun=col0 … Sat=col6
+    const firstDow = new Date(year, month, 1).getDay(); // 0=Sun..6=Sat
     for (let i = 0; i < firstDow; i++) cells.push(null);
     for (let d = 1; d <= daysInMonth; d++) {
       cells.push(`${year}-${pad(month + 1)}-${pad(d)}`);
     }
   } else {
-    // 5-col grid Mon-Fri, skip weekends
-    const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0..Sun=6
-    const offset = firstDow <= 4 ? firstDow : 0;
+    // 5-col grid Mon–Fri, skip Sun(0) and Sat(6)
+    const firstDow = new Date(year, month, 1).getDay();
+    const offset = firstDow >= 1 && firstDow <= 5 ? firstDow - 1 : 0;
     for (let i = 0; i < offset; i++) cells.push(null);
     for (let d = 1; d <= daysInMonth; d++) {
       const dow = new Date(year, month, d).getDay();
@@ -48,45 +40,15 @@ function generateCells(year: number, month: number, showWeekends: boolean): (str
 }
 
 export default function MonthCalendar({
-  year, month, activeDate, todayISO, showWeekends,
-  onSelectDate, onMonthChange,
+  year, month, activeDate, todayISO, showWeekends, onSelectDate,
 }: MonthCalendarProps) {
   const cells = generateCells(year, month, showWeekends);
   const dayHeaders = showWeekends
-    ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-    : ["Mo", "Tu", "We", "Th", "Fr"];
-
-  function prevMonth() {
-    if (month === 0) onMonthChange(year - 1, 11);
-    else onMonthChange(year, month - 1);
-  }
-
-  function nextMonth() {
-    if (month === 11) onMonthChange(year + 1, 0);
-    else onMonthChange(year, month + 1);
-  }
+    ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    : ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
   return (
-    <div className="px-1 py-2">
-      {/* Month navigation */}
-      <div className="flex items-center justify-between px-1 mb-2">
-        <button
-          onClick={prevMonth}
-          className="p-1 rounded hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-        </button>
-        <span className="text-xs font-medium text-foreground">
-          {MONTHS[month]} {year}
-        </span>
-        <button
-          onClick={nextMonth}
-          className="p-1 rounded hover:bg-sidebar-accent transition-colors text-muted-foreground hover:text-foreground"
-        >
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
+    <div className="px-1 py-1">
       {/* Day-of-week headers */}
       <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} mb-1`}>
         {dayHeaders.map((h) => (

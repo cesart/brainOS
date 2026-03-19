@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Brain, PanelLeft, NotebookPen, EllipsisVertical,
   Calendar, CalendarCheck, Layers, Maximize2,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import {
   Sidebar,
@@ -20,6 +21,8 @@ const MODE_COLORS: Record<number, string> = {
   0: "#6366f1", 1: "#10b981", 2: "#f59e0b",
   3: "#a855f7", 4: "#ef4444", 5: "#06b6d4",
 };
+
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 interface LeftBarProps {
   todayISO: string;
@@ -89,6 +92,26 @@ export default function LeftBar({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [agendaMenuOpen]);
 
+  function prevMonth() {
+    setCalMonth((c) => c.month === 0 ? { year: c.year - 1, month: 11 } : { ...c, month: c.month - 1 });
+  }
+
+  function nextMonth() {
+    setCalMonth((c) => c.month === 11 ? { year: c.year + 1, month: 0 } : { ...c, month: c.month + 1 });
+  }
+
+  function goToToday() {
+    const d = new Date(todayISO + "T00:00:00");
+    setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
+  }
+
+  // "·" when on current month, "Mar '26" when navigated away
+  const todayDate = new Date(todayISO + "T00:00:00");
+  const isCurrentMonth = calMonth.year === todayDate.getFullYear() && calMonth.month === todayDate.getMonth();
+  const calNavLabel = isCurrentMonth
+    ? "·"
+    : `${MONTHS_SHORT[calMonth.month]} '${String(calMonth.year).slice(2)}`;
+
   function countForCollection(id: string) {
     return items.filter((i) => i.collectionIds?.includes(id)).length;
   }
@@ -144,43 +167,72 @@ export default function LeftBar({
               <NotebookPen className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-sm font-medium text-sidebar-foreground">Agenda</span>
             </div>
-            <div className="relative" ref={agendaMenuRef}>
-              <button
-                onClick={() => setAgendaMenuOpen((o) => !o)}
-                className="text-muted-foreground hover:text-sidebar-foreground transition-colors"
-              >
-                <EllipsisVertical className="w-4 h-4" />
-              </button>
-              {agendaMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
-                  {/* View toggle */}
-                  <div className="flex gap-1 px-2 py-1.5">
+            <div className="flex items-center gap-0.5">
+              {/* Month nav — only in month view */}
+              {agendaView === "month" && (
+                <>
+                  <button
+                    onClick={prevMonth}
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Previous month"
+                  >
+                    <ChevronLeft className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={goToToday}
+                    className="text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors min-w-[2.5rem] text-center leading-none py-1"
+                    title="Go to today"
+                  >
+                    {calNavLabel}
+                  </button>
+                  <button
+                    onClick={nextMonth}
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Next month"
+                  >
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </>
+              )}
+              {/* Agenda options dropdown */}
+              <div className="relative" ref={agendaMenuRef}>
+                <button
+                  onClick={() => setAgendaMenuOpen((o) => !o)}
+                  className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1"
+                >
+                  <EllipsisVertical className="w-4 h-4" />
+                </button>
+                {agendaMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
+                    {/* View toggle */}
+                    <div className="flex gap-1 px-2 py-1.5">
+                      <button
+                        onClick={() => setAgendaView("month")}
+                        className={`flex-1 text-xs py-1 rounded-md transition-colors ${agendaView === "month" ? "bg-sidebar-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        Month
+                      </button>
+                      <button
+                        onClick={() => setAgendaView("week")}
+                        className={`flex-1 text-xs py-1 rounded-md transition-colors ${agendaView === "week" ? "bg-sidebar-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        Week
+                      </button>
+                    </div>
+                    <div className="h-px bg-sidebar-border mx-2" />
+                    {/* Weekends toggle */}
                     <button
-                      onClick={() => setAgendaView("month")}
-                      className={`flex-1 text-xs py-1 rounded-md transition-colors ${agendaView === "month" ? "bg-sidebar-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                      onClick={() => setShowWeekends((w) => !w)}
+                      className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
                     >
-                      Month
-                    </button>
-                    <button
-                      onClick={() => setAgendaView("week")}
-                      className={`flex-1 text-xs py-1 rounded-md transition-colors ${agendaView === "week" ? "bg-sidebar-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-                    >
-                      Week
+                      <span className="flex-1 text-left">Weekends</span>
+                      <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${showWeekends ? "bg-foreground" : "bg-sidebar-border"}`}>
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all ${showWeekends ? "left-[14px]" : "left-0.5"}`} />
+                      </div>
                     </button>
                   </div>
-                  <div className="h-px bg-sidebar-border mx-2" />
-                  {/* Weekends toggle */}
-                  <button
-                    onClick={() => setShowWeekends((w) => !w)}
-                    className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
-                  >
-                    <span className="flex-1 text-left">Weekends</span>
-                    <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${showWeekends ? "bg-foreground" : "bg-sidebar-border"}`}>
-                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all ${showWeekends ? "left-[14px]" : "left-0.5"}`} />
-                    </div>
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
@@ -192,7 +244,6 @@ export default function LeftBar({
               todayISO={todayISO}
               showWeekends={showWeekends}
               onSelectDate={onSelectDate}
-              onMonthChange={(year, month) => setCalMonth({ year, month })}
             />
           ) : (
             <SidebarMenu className="px-1 py-1 gap-0.5">

@@ -4,11 +4,14 @@ import { useState, useRef, useEffect } from "react";
 import {
   Brain, Calendar, CalendarCheck,
   Layers, Glasses, Square, SquareCheck,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
 import Editor from "@/components/editor";
 import { Clock } from "@/components/clock";
 import MonthCalendar from "@/components/month-calendar";
+
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 const MODE_COLORS: Record<number, string> = {
   0: "#6366f1", 1: "#10b981", 2: "#f59e0b",
@@ -57,6 +60,25 @@ export default function MobileView({
     const d = new Date(activeDate + "T00:00:00");
     setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
   }, [activeDate]);
+
+  function prevCalMonth() {
+    setCalMonth((c) => c.month === 0 ? { year: c.year - 1, month: 11 } : { ...c, month: c.month - 1 });
+  }
+
+  function nextCalMonth() {
+    setCalMonth((c) => c.month === 11 ? { year: c.year + 1, month: 0 } : { ...c, month: c.month + 1 });
+  }
+
+  function goToToday() {
+    const d = new Date(todayISO + "T00:00:00");
+    setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
+  }
+
+  const todayDate = new Date(todayISO + "T00:00:00");
+  const isCurrentCalMonth = calMonth.year === todayDate.getFullYear() && calMonth.month === todayDate.getMonth();
+  const calNavLabel = isCurrentCalMonth
+    ? "·"
+    : `${MONTHS_SHORT[calMonth.month]} '${String(calMonth.year).slice(2)}`;
 
   const pastDue   = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
@@ -178,6 +200,21 @@ export default function MobileView({
             {/* Calendar tab */}
             {bottomTab === "calendar" && (
               <div className="px-2 py-1">
+                {/* Nav row */}
+                <div className="flex items-center justify-between px-1 py-1">
+                  <button onClick={prevCalMonth} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={goToToday}
+                    className="text-[11px] font-mono text-muted-foreground hover:text-foreground transition-colors min-w-[3rem] text-center"
+                  >
+                    {calNavLabel}
+                  </button>
+                  <button onClick={nextCalMonth} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
                 <MonthCalendar
                   year={calMonth.year}
                   month={calMonth.month}
@@ -185,7 +222,6 @@ export default function MobileView({
                   todayISO={todayISO}
                   showWeekends={showWeekends}
                   onSelectDate={(date) => { onSelectDate(date); setSheetUp(false); }}
-                  onMonthChange={(year, month) => setCalMonth({ year, month })}
                 />
                 {/* Weekends toggle */}
                 <div className="flex items-center justify-between px-2 py-2 mt-1 border-t border-sidebar-border">
