@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
-  Brain, PanelTop, Calendar, CalendarCheck,
-  Layers, NotebookPen, EllipsisVertical, Plus,
-  Glasses, Square, SquareCheck,
+  Brain, Calendar, CalendarCheck,
+  Layers, Glasses, Square, SquareCheck,
 } from "lucide-react";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
 import Editor from "@/components/editor";
 import { Clock } from "@/components/clock";
+import MonthCalendar from "@/components/month-calendar";
 
 const MODE_COLORS: Record<number, string> = {
   0: "#6366f1", 1: "#10b981", 2: "#f59e0b",
@@ -16,14 +16,7 @@ const MODE_COLORS: Record<number, string> = {
 };
 
 const SHEET_PEEK = 56;
-const SHEET_UP   = 360;
-
-function getDayLabel(date: string, todayISO: string): string {
-  if (date === todayISO) return "Today";
-  return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-  });
-}
+const SHEET_UP   = 420;
 
 function daysDiff(dueDate: string, todayISO: string): number {
   const due   = new Date(dueDate + "T00:00:00");
@@ -51,8 +44,19 @@ export default function MobileView({
   collections, activeModeId, onSelectMode, items,
   dayEvents, allTasks, onToggleTask,
 }: MobileViewProps) {
-  const [navOpen, setNavOpen] = useState(false);
   const [sheetUp, setSheetUp] = useState(false);
+  const [bottomTab, setBottomTab] = useState<"calendar" | "modes" | "overview">("overview");
+  const [showWeekends, setShowWeekends] = useState(true);
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = new Date(activeDate + "T00:00:00");
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+
+  // Sync calendar month when active date changes
+  useEffect(() => {
+    const d = new Date(activeDate + "T00:00:00");
+    setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
+  }, [activeDate]);
 
   const pastDue   = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
@@ -74,14 +78,26 @@ export default function MobileView({
     else if (delta < -40) setSheetUp(true);
   }
 
+  function handleTabTap(tab: "calendar" | "modes" | "overview") {
+    if (bottomTab === tab && sheetUp) {
+      setSheetUp(false);
+    } else {
+      setBottomTab(tab);
+      setSheetUp(true);
+    }
+  }
+
+  const tabs = [
+    { id: "calendar" as const, icon: <Calendar className="w-4 h-4" />, label: "Calendar" },
+    { id: "modes" as const,    icon: <Layers className="w-4 h-4" />,   label: "Modes" },
+    { id: "overview" as const, icon: <Glasses className="w-4 h-4" />,  label: "Overview" },
+  ];
+
   return (
     <div className="relative h-dvh overflow-hidden bg-background flex flex-col">
 
-      {/* Main content — blurs when nav is open */}
-      <div
-        className="flex flex-col flex-1 min-h-0 overflow-hidden transition-[filter] duration-300"
-        style={{ filter: navOpen ? "blur(5px)" : "none" }}
-      >
+      {/* Main content */}
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Brand bar */}
         <div className="flex items-center justify-between px-2 py-4 flex-shrink-0 bg-sidebar">
           <div className="flex items-center gap-2.5">
@@ -90,12 +106,6 @@ export default function MobileView({
             </div>
             <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
           </div>
-          <button
-            onClick={() => setNavOpen(true)}
-            className="text-muted-foreground p-1"
-          >
-            <PanelTop className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Date / time bar */}
@@ -126,202 +136,169 @@ export default function MobileView({
         />
       </div>
 
-      {/* Bottom sheet — in-flow spacer that grows/shrinks */}
+      {/* Bottom sheet */}
       <div
-        className="flex-shrink-0 mx-4 mb-2 bg-background border border-sidebar-border overflow-hidden transition-all duration-300"
+        className="flex-shrink-0 mx-4 mb-2 bg-background border border-sidebar-border overflow-hidden"
         style={{
           height: sheetHeight,
-          borderRadius: sheetUp ? "16px" : "9999px",
-          filter: navOpen ? "blur(5px)" : "none",
-          transition: "height 300ms, border-radius 300ms, filter 300ms",
+          borderRadius: sheetUp ? "16px" : "20px",
+          transition: "height 300ms, border-radius 300ms",
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Handle + Overview header */}
-        <button
-          className="w-full flex-shrink-0"
+        {/* Tab bar (always visible in peek area) */}
+        <div
+          className="flex items-center justify-around flex-shrink-0 border-b border-sidebar-border"
           style={{ height: SHEET_PEEK }}
-          onClick={() => setSheetUp(!sheetUp)}
         >
-          {sheetUp && (
-            <div className="flex justify-center pt-2 pb-2">
-              <div className="w-20 h-1.5 rounded-full bg-sidebar-border" />
-            </div>
-          )}
-          <div
-            className={`flex items-center gap-2 px-4 ${sheetUp ? "py-2.5 border-b border-sidebar-border" : "h-full"}`}
-          >
-            <Glasses className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">Overview</span>
-          </div>
-        </button>
+          {tabs.map((tab) => {
+            const isActive = bottomTab === tab.id && sheetUp;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabTap(tab.id)}
+                className={`flex flex-col items-center gap-0.5 py-1 px-4 transition-colors ${
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {tab.icon}
+                <span className="text-[9px] font-medium">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-        {/* Scrollable content — visible when card-up */}
+        {/* Sheet content — visible when expanded */}
         {sheetUp && (
           <div
-            className="overflow-y-auto flex flex-col gap-4 p-2"
-            style={{ maxHeight: SHEET_UP - SHEET_PEEK }}
+            className="overflow-y-auto"
+            style={{ height: SHEET_UP - SHEET_PEEK }}
           >
-            {dayEvents.length > 0 && (
-              <section>
-                <div className="flex items-center gap-1.5 px-1.5 pb-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
-                  <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Events</p>
+            {/* Calendar tab */}
+            {bottomTab === "calendar" && (
+              <div className="px-2 py-1">
+                <MonthCalendar
+                  year={calMonth.year}
+                  month={calMonth.month}
+                  activeDate={activeDate}
+                  todayISO={todayISO}
+                  showWeekends={showWeekends}
+                  onSelectDate={(date) => { onSelectDate(date); setSheetUp(false); }}
+                  onMonthChange={(year, month) => setCalMonth({ year, month })}
+                />
+                {/* Weekends toggle */}
+                <div className="flex items-center justify-between px-2 py-2 mt-1 border-t border-sidebar-border">
+                  <span className="text-xs text-muted-foreground">Weekends</span>
+                  <button
+                    onClick={() => setShowWeekends((w) => !w)}
+                    className={`relative w-8 h-4 rounded-full transition-colors ${showWeekends ? "bg-foreground" : "bg-sidebar-border"}`}
+                  >
+                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all ${showWeekends ? "left-[18px]" : "left-0.5"}`} />
+                  </button>
                 </div>
-                <div className="flex flex-col gap-0.5">
-                  {dayEvents.map((event) => (
-                    <div key={event.id} className="flex items-center gap-2.5 px-1.5 py-2 rounded-md">
-                      <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm text-foreground flex-1 min-w-0 truncate">{event.name}</span>
-                      {event.dueDate && (
-                        <span className="text-sm text-muted-foreground tabular-nums flex-shrink-0">
-                          {new Date(event.dueDate + "T00:00:00").toLocaleDateString("en-US", {
-                            month: "short", day: "numeric",
-                          })}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
+              </div>
             )}
 
-            {allTasks.length > 0 && (
-              <section>
-                <div className="flex items-center gap-1.5 px-1.5 pb-2">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#6366f1" }} />
-                  <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completed].map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
-                      style={t.completed ? { opacity: 0.75 } : {}}
-                      onClick={() => onToggleTask(t.id, !t.completed)}
-                    >
-                      {t.completed
-                        ? <SquareCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                        : <Square className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                      }
-                      <span className={`text-sm leading-snug ${t.completed ? "text-muted-foreground" : "text-foreground"}`}>
-                        {t.name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {dayEvents.length === 0 && allTasks.length === 0 && (
-              <p className="text-sm text-muted-foreground/50 text-center py-8">Nothing here yet.</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Nav backdrop — tap to close */}
-      {navOpen && (
-        <div
-          className="absolute inset-0 z-10"
-          onClick={() => setNavOpen(false)}
-        />
-      )}
-
-      {/* Nav panel — dropdown from top bar, content height */}
-      <div
-        className="absolute right-4 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-20 flex flex-col gap-0 transition-all duration-200 w-64 pt-1 pb-2"
-        style={{
-          top: "16px",
-          opacity: navOpen ? 1 : 0,
-          pointerEvents: navOpen ? "auto" : "none",
-          transform: navOpen ? "translateY(0)" : "translateY(-6px)",
-        }}
-      >
-        {/* Agenda section */}
-        <div className="flex-shrink-0">
-          <div className="flex items-center justify-between px-3 py-2.5 border-b border-sidebar-border">
-            <div className="flex items-center gap-2">
-              <NotebookPen className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-sm font-medium text-sidebar-foreground">Agenda</span>
-            </div>
-            <button className="text-muted-foreground p-0.5">
-              <EllipsisVertical className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex flex-col gap-0.5 px-1 py-1">
-            {weekDates.map((date) => {
-              const isActive = date === activeDate;
-              const isToday  = date === todayISO;
-              const label    = getDayLabel(date, todayISO);
-              return (
+            {/* Modes tab */}
+            {bottomTab === "modes" && (
+              <div className="flex flex-col gap-0.5 px-1 py-2">
                 <button
-                  key={date}
-                  onClick={() => { onSelectDate(date); setNavOpen(false); }}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left w-full transition-colors ${
-                    isActive
+                  onClick={() => { onSelectMode(null); setSheetUp(false); }}
+                  className={`flex items-center gap-2 px-2 py-2 rounded-md text-xs w-full transition-colors ${
+                    activeModeId === null
                       ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                   }`}
                 >
-                  {isToday
-                    ? <CalendarCheck className="w-4 h-4 flex-shrink-0" />
-                    : <Calendar className="w-4 h-4 flex-shrink-0" />
-                  }
-                  {label}
+                  <span className="w-2 h-2 rounded-full bg-accent-foreground flex-shrink-0" />
+                  <span className="flex-1 text-left">All</span>
+                  <span className="tabular-nums">{items.length}</span>
                 </button>
-              );
-            })}
-          </div>
-        </div>
+                {collections.map((col, i) => (
+                  <button
+                    key={col.id}
+                    onClick={() => { onSelectMode(col.id); setSheetUp(false); }}
+                    className={`flex items-center gap-2 px-2 py-2 rounded-md text-xs w-full transition-colors ${
+                      activeModeId === col.id
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    }`}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: MODE_COLORS[i] ?? "#6366f1" }}
+                    />
+                    <span className="flex-1 text-left">{col.name}</span>
+                    <span className="tabular-nums">
+                      {items.filter((it) => it.collectionIds?.includes(col.id)).length}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
-        {/* Modes section */}
-        <div className="flex-shrink-0">
-          <div className="flex items-center justify-between px-3 py-2.5 border-b border-sidebar-border">
-            <div className="flex items-center gap-2">
-              <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-sm font-medium text-sidebar-foreground">Modes</span>
-            </div>
-            <button className="text-muted-foreground p-0.5">
-              <Plus className="w-4 h-4" />
-            </button>
+            {/* Overview tab */}
+            {bottomTab === "overview" && (
+              <div className="flex flex-col gap-4 p-2">
+                {dayEvents.length > 0 && (
+                  <section>
+                    <div className="flex items-center gap-1.5 px-1.5 pb-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                      <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Events</p>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      {dayEvents.map((event) => (
+                        <div key={event.id} className="flex items-center gap-2.5 px-1.5 py-2 rounded-md">
+                          <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className="text-sm text-foreground flex-1 min-w-0 truncate">{event.name}</span>
+                          {event.dueDate && (
+                            <span className="text-sm text-muted-foreground tabular-nums flex-shrink-0">
+                              {new Date(event.dueDate + "T00:00:00").toLocaleDateString("en-US", {
+                                month: "short", day: "numeric",
+                              })}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {allTasks.length > 0 && (
+                  <section>
+                    <div className="flex items-center gap-1.5 px-1.5 pb-2">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#6366f1" }} />
+                      <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completed].map((t) => (
+                        <div
+                          key={t.id}
+                          className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
+                          style={t.completed ? { opacity: 0.75 } : {}}
+                          onClick={() => onToggleTask(t.id, !t.completed)}
+                        >
+                          {t.completed
+                            ? <SquareCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                            : <Square className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                          }
+                          <span className={`text-sm leading-snug ${t.completed ? "text-muted-foreground" : "text-foreground"}`}>
+                            {t.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {dayEvents.length === 0 && allTasks.length === 0 && (
+                  <p className="text-sm text-muted-foreground/50 text-center py-8">Nothing here yet.</p>
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex flex-col gap-0.5 px-1 py-1">
-            <button
-              onClick={() => { onSelectMode(null); setNavOpen(false); }}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs w-full transition-colors ${
-                activeModeId === null
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-accent-foreground flex-shrink-0" />
-              <span className="flex-1 text-left">All</span>
-              <span className="tabular-nums">{items.length}</span>
-            </button>
-            {collections.map((col, i) => (
-              <button
-                key={col.id}
-                onClick={() => { onSelectMode(col.id); setNavOpen(false); }}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs w-full transition-colors ${
-                  activeModeId === col.id
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                }`}
-              >
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: MODE_COLORS[i] ?? "#6366f1" }}
-                />
-                <span className="flex-1 text-left">{col.name}</span>
-                <span className="tabular-nums">
-                  {items.filter((it) => it.collectionIds?.includes(col.id)).length}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { AirtableItem, AirtableCollection } from "@/lib/airtable";
+import MonthCalendar from "@/components/month-calendar";
 
 const MODE_COLORS: Record<number, string> = {
   0: "#6366f1", 1: "#10b981", 2: "#f59e0b",
@@ -34,8 +35,7 @@ interface LeftBarProps {
   onToggleWide: () => void;
 }
 
-function getDayLabel(date: string, todayISO: string): string {
-  if (date === todayISO) return "Today";
+function getWeekDayLabel(date: string): string {
   return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "short", month: "short", day: "numeric",
   });
@@ -49,6 +49,23 @@ export default function LeftBar({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const [agendaView, setAgendaView] = useState<"month" | "week">("month");
+  const [showWeekends, setShowWeekends] = useState(true);
+  const [agendaMenuOpen, setAgendaMenuOpen] = useState(false);
+  const agendaMenuRef = useRef<HTMLDivElement>(null);
+
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = new Date(activeDate + "T00:00:00");
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+
+  // Sync calendar month when active date changes
+  useEffect(() => {
+    const d = new Date(activeDate + "T00:00:00");
+    setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
+  }, [activeDate]);
+
+  // Close panel menu on outside click
   useEffect(() => {
     if (!menuOpen) return;
     function handleClick(e: MouseEvent) {
@@ -59,6 +76,18 @@ export default function LeftBar({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
+
+  // Close agenda menu on outside click
+  useEffect(() => {
+    if (!agendaMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (agendaMenuRef.current && !agendaMenuRef.current.contains(e.target as Node)) {
+        setAgendaMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [agendaMenuOpen]);
 
   function countForCollection(id: string) {
     return items.filter((i) => i.collectionIds?.includes(id)).length;
@@ -98,7 +127,6 @@ export default function LeftBar({
               >
                 <Maximize2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 <span className="flex-1 text-left">Full width</span>
-                {/* Toggle pill */}
                 <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${wideMode ? "bg-foreground" : "bg-sidebar-border"}`}>
                   <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all ${wideMode ? "left-[14px]" : "left-0.5"}`} />
                 </div>
@@ -116,33 +144,83 @@ export default function LeftBar({
               <NotebookPen className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-sm font-medium text-sidebar-foreground">Agenda</span>
             </div>
-            <button className="text-muted-foreground hover:text-sidebar-foreground transition-colors">
-              <EllipsisVertical className="w-4 h-4" />
-            </button>
+            <div className="relative" ref={agendaMenuRef}>
+              <button
+                onClick={() => setAgendaMenuOpen((o) => !o)}
+                className="text-muted-foreground hover:text-sidebar-foreground transition-colors"
+              >
+                <EllipsisVertical className="w-4 h-4" />
+              </button>
+              {agendaMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-44 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
+                  {/* View toggle */}
+                  <div className="flex gap-1 px-2 py-1.5">
+                    <button
+                      onClick={() => setAgendaView("month")}
+                      className={`flex-1 text-xs py-1 rounded-md transition-colors ${agendaView === "month" ? "bg-sidebar-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      Month
+                    </button>
+                    <button
+                      onClick={() => setAgendaView("week")}
+                      className={`flex-1 text-xs py-1 rounded-md transition-colors ${agendaView === "week" ? "bg-sidebar-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      Week
+                    </button>
+                  </div>
+                  <div className="h-px bg-sidebar-border mx-2" />
+                  {/* Weekends toggle */}
+                  <button
+                    onClick={() => setShowWeekends((w) => !w)}
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
+                  >
+                    <span className="flex-1 text-left">Weekends</span>
+                    <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${showWeekends ? "bg-foreground" : "bg-sidebar-border"}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all ${showWeekends ? "left-[14px]" : "left-0.5"}`} />
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          <SidebarMenu className="px-1 py-1 gap-0.5">
-            {weekDates.map((date) => {
-              const isActive = date === activeDate;
-              const isToday = date === todayISO;
-              const label = getDayLabel(date, todayISO);
-              return (
-                <SidebarMenuItem key={date}>
-                  <SidebarMenuButton
-                    isActive={isActive}
-                    onClick={() => onSelectDate(date)}
-                    className={`gap-2 text-xs ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : ""}`}
-                  >
-                    {isToday
-                      ? <CalendarCheck className="w-4 h-4 flex-shrink-0" />
-                      : <Calendar className="w-4 h-4 flex-shrink-0" />
-                    }
-                    {label}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
+          {agendaView === "month" ? (
+            <MonthCalendar
+              year={calMonth.year}
+              month={calMonth.month}
+              activeDate={activeDate}
+              todayISO={todayISO}
+              showWeekends={showWeekends}
+              onSelectDate={onSelectDate}
+              onMonthChange={(year, month) => setCalMonth({ year, month })}
+            />
+          ) : (
+            <SidebarMenu className="px-1 py-1 gap-0.5">
+              {weekDates.map((date) => {
+                const isActive = date === activeDate;
+                const isToday = date === todayISO;
+                const label = getWeekDayLabel(date);
+                return (
+                  <SidebarMenuItem key={date}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => onSelectDate(date)}
+                      className={`gap-2 text-xs ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : ""}`}
+                    >
+                      {isToday
+                        ? <CalendarCheck className="w-4 h-4 flex-shrink-0" />
+                        : <Calendar className="w-4 h-4 flex-shrink-0" />
+                      }
+                      <span className="flex-1 min-w-0 truncate">{label}</span>
+                      {isToday && (
+                        <span className="text-[9px] text-muted-foreground bg-sidebar-border rounded px-1 flex-shrink-0">Today</span>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          )}
         </div>
 
         {/* Modes section */}
