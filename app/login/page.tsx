@@ -26,7 +26,7 @@ export default function LoginPage({
 }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
-      <div className="flex flex-col items-center w-full max-w-[360px] border border-border rounded-2xl overflow-hidden">
+      <div className="flex flex-col items-center w-full max-w-[360px] border border-border rounded-3xl overflow-hidden">
         {/* Scene — centered, fixed size */}
         <div className="pt-8">
           <UnicornScene
