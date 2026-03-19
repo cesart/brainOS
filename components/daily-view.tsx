@@ -212,6 +212,7 @@ export default function DailyView({
               events={dayEvents}
               tasks={allTasks}
               todayISO={todayISO}
+              activeDate={activeDate}
               onToggleTask={toggleTask}
             />
           </div>

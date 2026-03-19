@@ -8,6 +8,7 @@ interface RightBarProps {
   events: AirtableItem[];
   tasks: AirtableItem[];
   todayISO: string;
+  activeDate: string;
   onToggleTask: (id: string, completed: boolean) => void;
 }
 
@@ -64,12 +65,12 @@ function TaskRow({
   );
 }
 
-export default function RightBar({ events, tasks, todayISO, onToggleTask }: RightBarProps) {
+export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask }: RightBarProps) {
   const pastDue   = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
   const noDate    = tasks.filter((t) => !t.completed && !t.dueDate);
-  const completed = tasks.filter((t) => t.completed);
+  const completed = activeDate === todayISO ? tasks.filter((t) => t.completed) : [];
 
   return (
     <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto">

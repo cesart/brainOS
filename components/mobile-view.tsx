@@ -63,6 +63,7 @@ export default function MobileView({
 }: MobileViewProps) {
   const [navOpen, setNavOpen] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
+  const [editorFocused, setEditorFocused] = useState(false);
   // const [sheetUp, setSheetUp] = useState(false);
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [weekViewStart, setWeekViewStart] = useState(todayISO);
@@ -96,7 +97,7 @@ export default function MobileView({
   const dueToday  = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
   const noDate    = allTasks.filter((t) => !t.completed && !t.dueDate);
-  const completed = allTasks.filter((t) => t.completed);
+  const completed = activeDate === todayISO ? allTasks.filter((t) => t.completed) : [];
 
   // const sheetHeight = sheetUp ? SHEET_UP : SHEET_PEEK;
   // const touchStartY = useRef(0);
@@ -109,13 +110,43 @@ export default function MobileView({
   return (
     <div className="relative h-dvh overflow-hidden bg-background flex flex-col">
 
+      {/* Top brand bar */}
+      <div
+        className="relative z-30 flex-shrink-0 flex items-center px-4 py-4 bg-sidebar border-b border-sidebar-border transition-opacity duration-300"
+        style={{ opacity: editorFocused ? 0 : 1, pointerEvents: editorFocused ? "none" : "auto" }}
+      >
+        <div className="flex items-center gap-2.5 flex-1">
+          <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
+            <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
+          </div>
+          <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => { setOverviewOpen(!overviewOpen); setNavOpen(false); }}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          >
+            <ClipboardList className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setNavOpen(!navOpen); setOverviewOpen(false); }}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          >
+            <PanelBottom className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
       {/* Main content — blurs when nav is open */}
       <div
         className="flex flex-col flex-1 min-h-0 overflow-hidden transition-[filter] duration-300"
         style={{ filter: navOpen ? "blur(5px)" : "none" }}
       >
-          {/* Date / time bar */}
-        <div className="flex items-center justify-between pl-2 pr-4 py-4 border-b border-border flex-shrink-0">
+        {/* Date / time bar */}
+        <div
+          className="flex items-center justify-between pl-2 pr-4 py-4 border-b border-border flex-shrink-0 transition-opacity duration-300"
+          style={{ opacity: editorFocused ? 0 : 1 }}
+        >
           <div>
             <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${activeDate === todayISO ? "opacity-100" : "opacity-35"}`}>
               {activeDate === todayISO ? "Today" : activeDate < todayISO ? "Past" : "Future"}
@@ -132,12 +163,18 @@ export default function MobileView({
         </div>
 
         {/* Editor */}
-        <Editor
-          dayId={currentDay.id}
-          initialBody={currentDay.body ?? ""}
-          events={dayEvents}
-          className="border-r-0"
-        />
+        <div
+          className="flex-1 min-h-0 overflow-hidden"
+          onFocus={() => setEditorFocused(true)}
+          onBlur={() => setEditorFocused(false)}
+        >
+          <Editor
+            dayId={currentDay.id}
+            initialBody={currentDay.body ?? ""}
+            events={dayEvents}
+            className="border-r-0"
+          />
+        </div>
       </div>
 
       {/* Nav/Overview backdrop — tap to close */}
@@ -148,14 +185,14 @@ export default function MobileView({
         />
       )}
 
-      {/* Overview popup — above brand bar, right-aligned */}
+      {/* Overview popup — below brand bar, right-aligned */}
       <div
         className="absolute right-3 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-40 w-72 transition-all duration-200"
         style={{
-          bottom: "72px",
+          top: "68px",
           opacity: overviewOpen ? 1 : 0,
           pointerEvents: overviewOpen ? "auto" : "none",
-          transform: overviewOpen ? "translateY(0)" : "translateY(6px)",
+          transform: overviewOpen ? "translateY(0)" : "translateY(-6px)",
           maxHeight: "60dvh",
         }}
       >
@@ -217,14 +254,14 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* Nav panel — slides up from bottom-right */}
+      {/* Nav panel — drops down from top-right */}
       <div
         className="absolute right-3 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-40 flex flex-col transition-all duration-200 w-64 p-2"
         style={{
-          bottom: "8px",
+          top: "68px",
           opacity: navOpen ? 1 : 0,
           pointerEvents: navOpen ? "auto" : "none",
-          transform: navOpen ? "translateY(0)" : "translateY(6px)",
+          transform: navOpen ? "translateY(0)" : "translateY(-6px)",
         }}
       >
         {/* Agenda section */}
@@ -394,29 +431,6 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* Bottom brand bar — always on top, nav trigger on right */}
-      <div className="relative z-30 flex-shrink-0 flex items-center px-4 py-4 bg-sidebar border-t border-sidebar-border">
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
-            <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
-          </div>
-          <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => { setOverviewOpen(!overviewOpen); setNavOpen(false); }}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-          >
-            <ClipboardList className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => { setNavOpen(!navOpen); setOverviewOpen(false); }}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-          >
-            <PanelBottom className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
