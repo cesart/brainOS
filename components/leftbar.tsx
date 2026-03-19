@@ -116,7 +116,6 @@ export default function LeftBar({
   function nextDay() { setWeekViewStart((s) => addDays(s, 1)); }
   function goToTodayWeek() { setWeekViewStart(todayISO); }
 
-  const todayDate = new Date(todayISO + "T00:00:00");
   const isWeekAtToday = weekViewStart === todayISO;
   const rollingDates = [0, 1, 2, 3, 4].map((i) => addDays(weekViewStart, i));
 

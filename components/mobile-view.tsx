@@ -47,7 +47,7 @@ interface MobileViewProps {
 }
 
 export default function MobileView({
-  currentDay, todayISO, weekDates: _weekDates, activeDate, onSelectDate,
+  currentDay, todayISO, weekDates, activeDate, onSelectDate,
   collections, activeModeId, onSelectMode, items,
   dayEvents, allTasks, onToggleTask,
 }: MobileViewProps) {
