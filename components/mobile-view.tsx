@@ -428,7 +428,7 @@ export default function MobileView({
       </div>
 
       {/* Bottom brand bar — always on top, nav trigger on right */}
-      <div className="relative z-30 flex-shrink-0 flex items-center px-3 py-3 bg-sidebar border-t border-sidebar-border">
+      <div className="relative z-30 flex-shrink-0 flex items-center px-4 py-4 bg-sidebar border-t border-sidebar-border">
         <div className="flex items-center gap-2.5 flex-1">
           <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
             <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
