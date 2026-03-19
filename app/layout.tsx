@@ -47,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${monaSans.variable} ${dmMono.variable} dark`}>
-      <body className="antialiased overflow-hidden">
+      <body className="font-sans antialiased overflow-hidden">
         <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>

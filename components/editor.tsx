@@ -30,6 +30,21 @@ function parseInline(text: string): React.ReactNode {
   let buf = "";
 
   while (i < text.length) {
+    // http(s):// URLs
+    if (text.startsWith("http://", i) || text.startsWith("https://", i)) {
+      const urlMatch = text.slice(i).match(/^https?:\/\/[^\s)>\]"'`]*/);
+      if (urlMatch) {
+        if (buf) { segments.push(<span key={key++}>{buf}</span>); buf = ""; }
+        const url = urlMatch[0];
+        segments.push(
+          <a key={key++} href={url} className="text-blue-400 underline" target="_blank" rel="noopener noreferrer">
+            {url}
+          </a>
+        );
+        i += url.length;
+        continue;
+      }
+    }
     // **bold**
     if (text.startsWith("**", i)) {
       const end = text.indexOf("**", i + 2);
@@ -209,6 +224,7 @@ const MarkdownView = React.forwardRef<HTMLDivElement, { body: string }>(
 // ---------------------------------------------------------------------------
 export default function Editor({ dayId, initialBody, events, className }: EditorProps) {
   const [body, setBody] = useState(initialBody);
+  const [atBottom, setAtBottom] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const markdownRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef(body);
@@ -410,7 +426,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
           onClick={() => textareaRef.current?.focus()}
         >
           {/* Bottom fade */}
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none z-10" />
+          <div className={`absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none z-10 transition-opacity duration-300 ${atBottom ? "opacity-0" : "opacity-100"}`} />
           {/* Rendered markdown — always visible, scroll driven by textarea */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {body
@@ -425,10 +441,28 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
             onChange={(e) => setBody(e.target.value)}
             onBlur={save}
             onKeyDown={handleKeyDown}
+            onClick={() => {
+              requestAnimationFrame(() => {
+                const el = textareaRef.current;
+                if (!el || el.selectionStart !== el.selectionEnd) return;
+                const pos = el.selectionStart;
+                const lineStart = body.lastIndexOf("\n", pos - 1) + 1;
+                const lineEnd = body.indexOf("\n", pos);
+                const line = body.slice(lineStart, lineEnd === -1 ? body.length : lineEnd);
+                const relPos = pos - lineStart;
+                if (line.startsWith("[] ") && relPos <= 2) {
+                  setBody(body.slice(0, lineStart) + "[x] " + body.slice(lineStart + 3));
+                } else if ((line.startsWith("[x] ") || line.startsWith("[X] ")) && relPos <= 3) {
+                  setBody(body.slice(0, lineStart) + "[] " + body.slice(lineStart + 4));
+                }
+              });
+            }}
             onScroll={(e) => {
+              const el = e.target as HTMLTextAreaElement;
               if (markdownRef.current) {
-                markdownRef.current.style.transform = `translateY(-${(e.target as HTMLTextAreaElement).scrollTop}px)`;
+                markdownRef.current.style.transform = `translateY(-${el.scrollTop}px)`;
               }
+              setAtBottom(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
             }}
             style={{ color: "transparent", caretColor: "var(--foreground)" }}
             className="absolute inset-0 w-full h-full bg-transparent resize-none outline-none p-2 leading-relaxed"
