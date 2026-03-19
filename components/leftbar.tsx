@@ -51,7 +51,7 @@ function addDays(dateISO: string, n: number): string {
 }
 
 export default function LeftBar({
-  todayISO, weekDates, activeDate, onSelectDate,
+  todayISO, weekDates: _weekDates, activeDate, onSelectDate,
   collections, activeModeId, onSelectMode, items,
   onHide, wideMode, onToggleWide,
 }: LeftBarProps) {
@@ -117,7 +117,6 @@ export default function LeftBar({
   function goToTodayWeek() { setWeekViewStart(todayISO); }
 
   const todayDate = new Date(todayISO + "T00:00:00");
-  const isCurrentMonth = calMonth.year === todayDate.getFullYear() && calMonth.month === todayDate.getMonth();
   const isWeekAtToday = weekViewStart === todayISO;
   const rollingDates = [0, 1, 2, 3, 4].map((i) => addDays(weekViewStart, i));
 
