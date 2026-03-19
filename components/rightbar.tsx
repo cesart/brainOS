@@ -110,7 +110,7 @@ export default function RightBar({ events, tasks, todayISO, onToggleTask }: Righ
         {tasks.length > 0 && (
           <section>
             <div className="flex items-center gap-1.5 px-1.5 pb-2">
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#6366f1" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
             </div>
             <LayoutGroup>

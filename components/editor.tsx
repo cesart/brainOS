@@ -45,6 +45,30 @@ function parseInline(text: string): React.ReactNode {
         continue;
       }
     }
+    // Bare domain URLs (e.g. google.com, cesart.me) — only at word boundaries
+    const FILE_EXTS = new Set(['tsx','jsx','ts','js','mjs','cjs','py','go','rs','rb','java','cpp','c','h','cs','php','swift','kt','css','scss','html','htm','json','yaml','yml','toml','md','mdx','txt','env','sh','bash','log','png','jpg','jpeg','gif','svg','pdf','zip','tar','gz','mp4','mp3']);
+    const atWordBoundary = buf.length === 0 || /[\s(["'`]$/.test(buf);
+    if (atWordBoundary && /[a-zA-Z]/.test(text[i])) {
+      const domainMatch = text.slice(i).match(/^([a-zA-Z][a-zA-Z0-9\-]*\.)+[a-zA-Z]{2,7}(\/[^\s)>\]"'`]*)?/);
+      if (domainMatch) {
+        const candidate = domainMatch[0];
+        const domainPart = candidate.split("/")[0];
+        const parts = domainPart.split(".");
+        const tld = parts[parts.length - 1].toLowerCase();
+        // Validate: all-letter TLD, not a file extension, at least 2 segments
+        if (/^[a-zA-Z]{2,7}$/.test(tld) && !FILE_EXTS.has(tld) && parts.length >= 2) {
+          if (buf) { segments.push(<span key={key++}>{buf}</span>); buf = ""; }
+          const href = `https://${candidate}`;
+          segments.push(
+            <a key={key++} href={href} className="text-blue-400 underline" target="_blank" rel="noopener noreferrer">
+              {candidate}
+            </a>
+          );
+          i += candidate.length;
+          continue;
+        }
+      }
+    }
     // **bold**
     if (text.startsWith("**", i)) {
       const end = text.indexOf("**", i + 2);
