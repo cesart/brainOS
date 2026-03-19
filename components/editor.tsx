@@ -123,7 +123,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
             key={tool.label}
             onClick={tool.action}
             title={tool.label}
-            className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
+            className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             {tool.icon}
           </button>
