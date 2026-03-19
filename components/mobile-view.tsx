@@ -6,7 +6,7 @@ import {
   Layers, NotebookPen,
   Glasses, Square, SquareCheck,
   ChevronLeft, ChevronRight,
-  Sun, Moon, Monitor,
+  Sun, Moon, Smartphone,
 } from "lucide-react";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
 import Editor from "@/components/editor";
@@ -406,7 +406,7 @@ export default function MobileView({
           <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
           <div className="flex gap-1">
             {([
-              { id: "auto",  Icon: Monitor, label: "Auto"  },
+              { id: "auto",  Icon: Smartphone, label: "Auto"  },
               { id: "light", Icon: Sun,     label: "Light" },
               { id: "dark",  Icon: Moon,    label: "Dark"  },
             ] as const).map(({ id, Icon, label }) => (
