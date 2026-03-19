@@ -1,6 +1,6 @@
 # 🧠 brainOS
 
-A personal life operating system — daily notes, task management, and agenda in one dark-mode interface, live on the web.
+> A personal life operating system — daily notes, task management, and agenda in one dark-mode interface, live on the web.
 
 This started as a personal itch: I wanted a single place that surfaces what I need to act on today without the overhead of a full productivity suite. The design leans into density and calm — a lot of information without feeling cluttered.
 
