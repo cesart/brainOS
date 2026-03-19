@@ -33,14 +33,14 @@ export default function LoginPage({
             projectId="iHobY0fcDE7oTK9pZRAo"
             sdkUrl="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.1.4/dist/unicornStudio.umd.js"
             width="100%"
-            height="260px"
+            height="120px"
           />
         </div>
 
         {/* Content */}
         <div className="flex flex-col items-center gap-8 px-8 py-8 w-full">
           <div className="flex flex-col items-center gap-1.5 text-center">
-            <h1 className="text-xl font-semibold text-foreground">Welcome back</h1>
+            <h1 className="text-lg font-mono font-semibold text-foreground">brainOS</h1>
             <p className="text-sm text-muted-foreground">Enter your passcode to continue</p>
           </div>
           <OTPInput action={login} error={!!searchParams.error} />
