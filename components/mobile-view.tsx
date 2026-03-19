@@ -5,7 +5,7 @@ import {
   Brain, PanelBottom, Calendar, CalendarCheck,
   Layers, NotebookPen,
   ClipboardClock, Square, SquareCheck,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Sun, Moon, Smartphone,
 } from "lucide-react";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
@@ -290,10 +290,10 @@ export default function MobileView({
                       >Today</button>
                     )}
                     <button onClick={() => setWeekViewStart((s) => addDays(s, -5))} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
-                      <ChevronLeft className="w-3 h-3" />
+                      <ChevronUp className="w-3 h-3" />
                     </button>
                     <button onClick={() => setWeekViewStart((s) => addDays(s, 5))} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
-                      <ChevronRight className="w-3 h-3" />
+                      <ChevronDown className="w-3 h-3" />
                     </button>
                   </>
                 )}
