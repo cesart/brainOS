@@ -25,20 +25,26 @@ export default function LoginPage({
   searchParams: { error?: string };
 }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-6 border border-border rounded-2xl overflow-hidden p-8 w-full max-w-sm">
-        <div className="w-full rounded-xl overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+      <div className="flex flex-col items-center w-full max-w-[360px] border border-border rounded-2xl overflow-hidden">
+        {/* Scene — flush to card edges, no padding */}
+        <div className="w-full">
           <UnicornScene
             projectId="iHobY0fcDE7oTK9pZRAo"
             sdkUrl="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.1.4/dist/unicornStudio.umd.js"
             width="100%"
-            height="240px"
+            height="260px"
           />
         </div>
-        <div className="flex flex-col items-center gap-1.5 text-center">
-          <p className="text-sm text-muted-foreground">Enter your passcode</p>
+
+        {/* Content */}
+        <div className="flex flex-col items-center gap-8 px-8 py-8 w-full">
+          <div className="flex flex-col items-center gap-1.5 text-center">
+            <h1 className="text-xl font-semibold text-foreground">Welcome back</h1>
+            <p className="text-sm text-muted-foreground">Enter your passcode to continue</p>
+          </div>
+          <OTPInput action={login} error={!!searchParams.error} />
         </div>
-        <OTPInput action={login} error={!!searchParams.error} />
       </div>
     </div>
   );
