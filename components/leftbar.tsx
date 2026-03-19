@@ -171,7 +171,6 @@ export default function LeftBar({
                 <PanelLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 Hide sidebar
               </button>
-              <div className="h-px bg-sidebar-border mx-2" />
               <button
                 onClick={() => { onToggleWide(); }}
                 className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
@@ -182,7 +181,7 @@ export default function LeftBar({
                   <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${wideMode ? "left-[14px]" : "left-0.5"}`} />
                 </div>
               </button>
-              <div className="h-px bg-sidebar-border mx-2" />
+              <div className="h-px bg-sidebar-border mx-2 mt-1" />
               <div className="px-3 py-2">
                 <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
                 <div className="flex gap-1">
