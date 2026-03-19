@@ -8,7 +8,7 @@ import Editor from "@/components/editor";
 import RightBar from "@/components/rightbar";
 import MobileView from "@/components/mobile-view";
 import { Clock } from "@/components/clock";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobileResolved } from "@/hooks/use-mobile";
 import { PanelLeft } from "lucide-react";
 
 interface DailyViewProps {
@@ -78,7 +78,9 @@ export default function DailyView({
   const dayEvents = filtered(dayItems).filter((i) => i.type === "event");
   const allTasks = filtered(items).filter((i) => i.type === "task");
 
-  const isMobile = useIsMobile();
+  const { isMobile, ready } = useIsMobileResolved();
+
+  if (!ready) return null;
 
   const activeD = new Date(activeDate + "T00:00:00");
   const isToday = activeDate === todayISO;
