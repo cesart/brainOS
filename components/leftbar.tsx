@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-  Brain, PanelLeft, NotebookPen, EllipsisVertical,
-  Calendar, CalendarCheck, Layers, Maximize2,
-  ChevronLeft, ChevronRight,
+  Brain, PanelLeft, NotebookPen,
+  Calendar, CalendarCheck, CalendarDays, CalendarRange, Layers, Maximize2,
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -21,8 +21,6 @@ const MODE_COLORS: Record<number, string> = {
   0: "#6366f1", 1: "#10b981", 2: "#f59e0b",
   3: "#a855f7", 4: "#ef4444", 5: "#06b6d4",
 };
-
-const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 interface LeftBarProps {
   todayISO: string;
@@ -44,6 +42,14 @@ function getWeekDayLabel(date: string): string {
   });
 }
 
+function pad2(n: number): string { return String(n).padStart(2, "0"); }
+
+function addDays(dateISO: string, n: number): string {
+  const d = new Date(dateISO + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
 export default function LeftBar({
   todayISO, weekDates, activeDate, onSelectDate,
   collections, activeModeId, onSelectMode, items,
@@ -53,9 +59,10 @@ export default function LeftBar({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
-  const [showWeekends, setShowWeekends] = useState(true);
   const [agendaMenuOpen, setAgendaMenuOpen] = useState(false);
   const agendaMenuRef = useRef<HTMLDivElement>(null);
+
+  const [weekViewStart, setWeekViewStart] = useState(todayISO);
 
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date(activeDate + "T00:00:00");
@@ -105,12 +112,14 @@ export default function LeftBar({
     setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
   }
 
-  // "·" when on current month, "Mar '26" when navigated away
+  function prevDay() { setWeekViewStart((s) => addDays(s, -1)); }
+  function nextDay() { setWeekViewStart((s) => addDays(s, 1)); }
+  function goToTodayWeek() { setWeekViewStart(todayISO); }
+
   const todayDate = new Date(todayISO + "T00:00:00");
   const isCurrentMonth = calMonth.year === todayDate.getFullYear() && calMonth.month === todayDate.getMonth();
-  const calNavLabel = isCurrentMonth
-    ? "·"
-    : `${MONTHS_SHORT[calMonth.month]} '${String(calMonth.year).slice(2)}`;
+  const isWeekAtToday = weekViewStart === todayISO;
+  const rollingDates = [0, 1, 2, 3, 4].map((i) => addDays(weekViewStart, i));
 
   function countForCollection(id: string) {
     return items.filter((i) => i.collectionIds?.includes(id)).length;
@@ -126,7 +135,7 @@ export default function LeftBar({
           </div>
           <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
         </div>
-        {/* Panel icon → dropdown */}
+        {/* Panel icon dropdown */}
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
@@ -165,25 +174,53 @@ export default function LeftBar({
           <div className="flex items-center justify-between px-2 py-2 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
               <NotebookPen className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-sm font-medium text-sidebar-foreground">Agenda</span>
+              {/* View dropdown — "Agenda ˅" is one clickable unit */}
+              <div className="relative" ref={agendaMenuRef}>
+                <button
+                  onClick={() => setAgendaMenuOpen((o) => !o)}
+                  className="flex items-center gap-1 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors px-1 py-0.5 rounded -mx-1"
+                >
+                  Agenda
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                </button>
+                {agendaMenuOpen && (
+                  <div className="absolute left-0 top-full mt-1 w-44 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
+                    <button
+                      onClick={() => { setAgendaView("month"); setAgendaMenuOpen(false); }}
+                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs transition-colors ${agendaView === "month" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"} hover:bg-sidebar-accent`}
+                    >
+                      <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                      View as month
+                    </button>
+                    <button
+                      onClick={() => { setAgendaView("week"); setAgendaMenuOpen(false); }}
+                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs transition-colors ${agendaView === "week" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"} hover:bg-sidebar-accent`}
+                    >
+                      <CalendarRange className="w-3.5 h-3.5 flex-shrink-0" />
+                      View as week
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-0.5">
-              {/* Month nav — only in month view */}
               {agendaView === "month" && (
                 <>
+                  {activeDate !== todayISO && (
+                    <button
+                      onClick={() => { onSelectDate(todayISO); goToToday(); }}
+                      className="text-[10px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors px-1.5 py-1 leading-none rounded"
+                      title="Go to today"
+                    >
+                      Today
+                    </button>
+                  )}
                   <button
                     onClick={prevMonth}
                     className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                     title="Previous month"
                   >
                     <ChevronLeft className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={goToToday}
-                    className="text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors min-w-[2.5rem] text-center leading-none py-1"
-                    title="Go to today"
-                  >
-                    {calNavLabel}
                   </button>
                   <button
                     onClick={nextMonth}
@@ -194,45 +231,33 @@ export default function LeftBar({
                   </button>
                 </>
               )}
-              {/* Agenda options dropdown */}
-              <div className="relative" ref={agendaMenuRef}>
-                <button
-                  onClick={() => setAgendaMenuOpen((o) => !o)}
-                  className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1"
-                >
-                  <EllipsisVertical className="w-4 h-4" />
-                </button>
-                {agendaMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
-                    {/* View toggle */}
-                    <div className="flex gap-1 px-2 py-1.5">
-                      <button
-                        onClick={() => setAgendaView("month")}
-                        className={`flex-1 text-xs py-1 rounded-md transition-colors ${agendaView === "month" ? "bg-sidebar-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-                      >
-                        Month
-                      </button>
-                      <button
-                        onClick={() => setAgendaView("week")}
-                        className={`flex-1 text-xs py-1 rounded-md transition-colors ${agendaView === "week" ? "bg-sidebar-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-                      >
-                        Week
-                      </button>
-                    </div>
-                    <div className="h-px bg-sidebar-border mx-2" />
-                    {/* Weekends toggle */}
+              {agendaView === "week" && (
+                <>
+                  {(activeDate !== todayISO || !isWeekAtToday) && (
                     <button
-                      onClick={() => setShowWeekends((w) => !w)}
-                      className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
+                      onClick={() => { onSelectDate(todayISO); goToTodayWeek(); }}
+                      className="text-[10px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors px-1.5 py-1 leading-none rounded"
+                      title="Go to today"
                     >
-                      <span className="flex-1 text-left">Weekends</span>
-                      <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${showWeekends ? "bg-foreground" : "bg-sidebar-border"}`}>
-                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-background transition-all ${showWeekends ? "left-[14px]" : "left-0.5"}`} />
-                      </div>
+                      Today
                     </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                  <button
+                    onClick={prevDay}
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Previous day"
+                  >
+                    <ChevronUp className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={nextDay}
+                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Next day"
+                  >
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -242,12 +267,12 @@ export default function LeftBar({
               month={calMonth.month}
               activeDate={activeDate}
               todayISO={todayISO}
-              showWeekends={showWeekends}
+              showWeekends={true}
               onSelectDate={onSelectDate}
             />
           ) : (
             <SidebarMenu className="px-1 py-1 gap-0.5">
-              {weekDates.map((date) => {
+              {rollingDates.map((date) => {
                 const isActive = date === activeDate;
                 const isToday = date === todayISO;
                 const label = getWeekDayLabel(date);
@@ -263,9 +288,6 @@ export default function LeftBar({
                         : <Calendar className="w-4 h-4 flex-shrink-0" />
                       }
                       <span className="flex-1 min-w-0 truncate">{label}</span>
-                      {isToday && (
-                        <span className="text-[9px] text-muted-foreground bg-sidebar-border rounded px-1 flex-shrink-0">Today</span>
-                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

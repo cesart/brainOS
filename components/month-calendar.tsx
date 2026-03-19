@@ -1,5 +1,7 @@
 "use client";
 
+const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
 interface MonthCalendarProps {
   year: number;
   month: number; // 0-indexed
@@ -18,14 +20,14 @@ function generateCells(year: number, month: number, showWeekends: boolean): (str
   const cells: (string | null)[] = [];
 
   if (showWeekends) {
-    // 7-col grid, Sun=col0 … Sat=col6
+    // 7-col grid, Sun=col0 ... Sat=col6
     const firstDow = new Date(year, month, 1).getDay(); // 0=Sun..6=Sat
     for (let i = 0; i < firstDow; i++) cells.push(null);
     for (let d = 1; d <= daysInMonth; d++) {
       cells.push(`${year}-${pad(month + 1)}-${pad(d)}`);
     }
   } else {
-    // 5-col grid Mon–Fri, skip Sun(0) and Sat(6)
+    // 5-col grid Mon-Fri, skip Sun(0) and Sat(6)
     const firstDow = new Date(year, month, 1).getDay();
     const offset = firstDow >= 1 && firstDow <= 5 ? firstDow - 1 : 0;
     for (let i = 0; i < offset; i++) cells.push(null);
@@ -47,8 +49,24 @@ export default function MonthCalendar({
     ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     : ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
+  const todayDate = new Date(todayISO + "T00:00:00");
+  const isCurrentMonth = year === todayDate.getFullYear() && month === todayDate.getMonth();
+
   return (
     <div className="px-1 py-1">
+      {/* Animated month/year label — only visible when navigated away */}
+      <div
+        style={{
+          maxHeight: isCurrentMonth ? "0" : "2rem",
+          overflow: "hidden",
+          transition: "max-height 200ms ease",
+        }}
+      >
+        <p className="text-center text-[11px] font-medium text-foreground py-1">
+          {MONTHS_FULL[month]} {year}
+        </p>
+      </div>
+
       {/* Day-of-week headers */}
       <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} mb-1`}>
         {dayHeaders.map((h) => (

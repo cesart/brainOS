@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   CheckSquare, Calendar, Heading, Bold, Italic, Strikethrough,
-  CodeXml, Link, Quote, List, ListOrdered, Square, SquareCheck,
+  CodeXml, Link, Quote, List, ListOrdered, Square, SquareCheck, Minus,
 } from "lucide-react";
 import { AirtableItem } from "@/lib/airtable";
 
@@ -100,12 +100,15 @@ function parseInline(text: string): React.ReactNode {
 }
 
 // ---------------------------------------------------------------------------
-// Markdown line renderer
+// Markdown line renderer — invisible prefix preserves textarea text layout
+// (same wrapping = correct click positions); icon overlays it absolutely.
 // ---------------------------------------------------------------------------
 function MarkdownLine({ line }: { line: string }) {
-  const h1Match = line.match(/^#\s+(.*)/);
-  const h2Match = line.match(/^##\s+(.*)/);
+  if (line.trim() === "") return <p>{"\u00a0"}</p>;
+
   const h3Match = line.match(/^###\s+(.*)/);
+  const h2Match = line.match(/^##\s+(.*)/);
+  const h1Match = line.match(/^#\s+(.*)/);
   const bqMatch = line.match(/^>\s?(.*)/);
   const taskUnchecked = line.match(/^\[\]\s(.*)/);
   const taskChecked = line.match(/^\[[xX]\]\s(.*)/);
@@ -113,79 +116,104 @@ function MarkdownLine({ line }: { line: string }) {
   const ulMatch = line.match(/^[-*]\s(.*)/);
   const olMatch = line.match(/^(\d+)\.\s(.*)/);
 
-  // Headings (most-specific first to avoid false matches on ##)
-  if (h3Match) return <h3 className="text-base font-semibold text-foreground leading-tight">{parseInline(h3Match[1])}</h3>;
-  if (h2Match) return <h2 className="text-xl font-bold text-foreground leading-tight">{parseInline(h2Match[1])}</h2>;
-  if (h1Match) return <h1 className="text-2xl font-bold text-foreground leading-tight">{parseInline(h1Match[1])}</h1>;
+  // Invisible prefix reserves the same horizontal space as the raw chars,
+  // keeping text wrap identical to the underlying textarea.
+  function Pfx({ content }: { content: string }) {
+    const chars = line.slice(0, line.length - content.length);
+    return <span className="invisible select-none">{chars}</span>;
+  }
 
-  if (bqMatch) return (
-    <div className="border-l-2 border-sidebar-border pl-3 text-muted-foreground italic leading-relaxed">
-      {parseInline(bqMatch[1])}
-    </div>
+  // Icon pinned to top-left of the line, overlapping the invisible prefix.
+  const iconCls = "absolute left-0 top-[4px] w-[14px] h-[14px] text-muted-foreground";
+
+  if (h1Match) return (
+    <p className="font-bold text-foreground">
+      <Pfx content={h1Match[1]} />{parseInline(h1Match[1])}
+    </p>
+  );
+  if (h2Match) return (
+    <p className="font-semibold text-foreground">
+      <Pfx content={h2Match[1]} />{parseInline(h2Match[1])}
+    </p>
+  );
+  if (h3Match) return (
+    <p className="font-medium text-muted-foreground">
+      <Pfx content={h3Match[1]} />{parseInline(h3Match[1])}
+    </p>
   );
 
   if (taskUnchecked) return (
-    <div className="flex items-start gap-2 leading-relaxed">
-      <Square className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-      <span className="text-foreground">{parseInline(taskUnchecked[1])}</span>
-    </div>
+    <p className="relative">
+      <Pfx content={taskUnchecked[1]} />
+      <Square className={iconCls} />
+      {parseInline(taskUnchecked[1])}
+    </p>
   );
-
   if (taskChecked) return (
-    <div className="flex items-start gap-2 leading-relaxed">
-      <SquareCheck className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-      <span className="text-muted-foreground line-through">{parseInline(taskChecked[1])}</span>
-    </div>
+    <p className="relative opacity-50">
+      <Pfx content={taskChecked[1]} />
+      <SquareCheck className={iconCls} />
+      {parseInline(taskChecked[1])}
+    </p>
   );
 
   if (eventMatch) return (
-    <div className="flex items-start gap-2 leading-relaxed">
-      <Calendar className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-      <span className="text-foreground">{parseInline(eventMatch[1])}</span>
-    </div>
+    <p className="relative">
+      <Pfx content={eventMatch[1]} />
+      <Calendar className={iconCls} />
+      {parseInline(eventMatch[1])}
+    </p>
+  );
+
+  if (bqMatch) return (
+    <p className="relative italic text-muted-foreground">
+      <Pfx content={bqMatch[1]} />
+      <span className="absolute left-0 inset-y-0 w-0.5 bg-muted-foreground/30 rounded-full" />
+      {parseInline(bqMatch[1])}
+    </p>
   );
 
   if (ulMatch) return (
-    <div className="flex items-start gap-2 leading-relaxed pl-1">
-      <span className="w-1 h-1 rounded-full bg-muted-foreground mt-[9px] flex-shrink-0" />
-      <span className="text-foreground">{parseInline(ulMatch[1])}</span>
-    </div>
+    <p className="relative">
+      <Pfx content={ulMatch[1]} />
+      <Minus className={iconCls} />
+      {parseInline(ulMatch[1])}
+    </p>
   );
-
   if (olMatch) return (
-    <div className="flex items-start gap-2 leading-relaxed pl-1">
-      <span className="text-muted-foreground text-[0.8em] min-w-[1.2em] text-right mt-0.5 flex-shrink-0">{olMatch[1]}.</span>
-      <span className="text-foreground">{parseInline(olMatch[2])}</span>
-    </div>
+    <p className="relative">
+      <Pfx content={olMatch[2]} />
+      <span className="absolute left-0 top-0 text-muted-foreground">{olMatch[1]}.</span>
+      {parseInline(olMatch[2])}
+    </p>
   );
 
-  if (line.trim() === "") return <div className="h-3" />;
-
-  return <p className="text-foreground leading-relaxed">{parseInline(line)}</p>;
+  return <p className="text-foreground">{parseInline(line)}</p>;
 }
 
-function MarkdownView({ body }: { body: string }) {
-  const lines = body.split("\n");
-  return (
-    <div className="flex flex-col px-2 py-2">
-      {lines.map((line, i) => (
-        <MarkdownLine key={i} line={line} />
-      ))}
-    </div>
-  );
-}
+const MarkdownView = React.forwardRef<HTMLDivElement, { body: string }>(
+  function MarkdownView({ body }, ref) {
+    const lines = body.split("\n");
+    return (
+      <div ref={ref} className="flex flex-col px-2 py-2 leading-relaxed text-base text-foreground">
+        {lines.map((line, i) => (
+          <MarkdownLine key={i} line={line} />
+        ))}
+      </div>
+    );
+  }
+);
 
 // ---------------------------------------------------------------------------
 // Editor component
 // ---------------------------------------------------------------------------
 export default function Editor({ dayId, initialBody, events, className }: EditorProps) {
   const [body, setBody] = useState(initialBody);
-  const [focused, setFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const markdownRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef(body);
   const savedRef = useRef(initialBody);
   const dayIdRef = useRef(dayId);
-  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     bodyRef.current = body;
@@ -195,7 +223,6 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
     setBody(initialBody);
     savedRef.current = initialBody;
     dayIdRef.current = dayId;
-    setFocused(false);
   }, [dayId, initialBody]);
 
   async function save() {
@@ -236,22 +263,6 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
     }, 5000);
     return () => clearInterval(syncInterval);
   }, []);
-
-  function handleFocus() {
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current);
-      blurTimeoutRef.current = null;
-    }
-    setFocused(true);
-  }
-
-  function handleBlur() {
-    save();
-    blurTimeoutRef.current = setTimeout(() => {
-      setFocused(false);
-      blurTimeoutRef.current = null;
-    }, 150);
-  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key !== "Enter") return;
@@ -393,37 +404,35 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
     <div className={`flex flex-col md:flex-row flex-1 overflow-hidden border-r border-border${className ? ` ${className}` : ""}`}>
       <div className="flex flex-col flex-1 overflow-hidden">
 
-        {/* Editor area — textarea (always mounted) overlaid with rendered view */}
-        <div className="relative flex-1 overflow-hidden">
+        {/* Editor area — rendered view always visible, transparent textarea captures input */}
+        <div
+          className="relative flex-1 overflow-hidden cursor-text"
+          onClick={() => textareaRef.current?.focus()}
+        >
+          {/* Bottom fade */}
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none z-10" />
+          {/* Rendered markdown — always visible, scroll driven by textarea */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {body
+              ? <MarkdownView ref={markdownRef} body={body} />
+              : <p className="p-2 text-muted">Start brain dumping…</p>
+            }
+          </div>
+          {/* Textarea — transparent text, visible caret, captures all input */}
           <textarea
             ref={textareaRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
+            onBlur={save}
             onKeyDown={handleKeyDown}
-            placeholder="Just start typing today…"
-            style={{
-              opacity: focused ? 1 : 0,
-              pointerEvents: focused ? "auto" : "none",
+            onScroll={(e) => {
+              if (markdownRef.current) {
+                markdownRef.current.style.transform = `translateY(-${(e.target as HTMLTextAreaElement).scrollTop}px)`;
+              }
             }}
-            className="absolute inset-0 w-full h-full bg-transparent resize-none outline-none p-2 leading-relaxed text-foreground placeholder:text-muted"
+            style={{ color: "transparent", caretColor: "var(--foreground)" }}
+            className="absolute inset-0 w-full h-full bg-transparent resize-none outline-none p-2 leading-relaxed"
           />
-          {!focused && (
-            <div
-              className="absolute inset-0 overflow-auto cursor-text"
-              onClick={() => {
-                setFocused(true);
-                requestAnimationFrame(() => textareaRef.current?.focus());
-              }}
-            >
-              {body ? (
-                <MarkdownView body={body} />
-              ) : (
-                <p className="p-2 text-muted">Just start typing today…</p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Upcoming events — large muted ghost text, thin separator */}

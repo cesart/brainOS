@@ -188,8 +188,8 @@ export default function DailyView({
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-mono tracking-[0.15em] text-muted-foreground uppercase">
-                  {isToday ? "Today" : activeD.toLocaleDateString("en-US", { weekday: "long" })}
+                <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
+                  {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
                 </p>
                 <h1 className="text-2xl font-bold leading-tight">{topBarDate}</h1>
               </div>
