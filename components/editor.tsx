@@ -17,7 +17,6 @@ interface EditorProps {
 interface ToolDef {
   label: string;
   icon: React.ReactNode;
-  showLabel?: boolean;
   action: () => void;
 }
 
@@ -66,9 +65,9 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
   }
 
   const tools: ToolDef[] = [
-    { label: "Task",    icon: <CheckSquare className="w-3 h-3" />, showLabel: true, action: () => insertLinePrefix("[] ") },
-    { label: "Event",   icon: <Calendar className="w-3 h-3" />,    showLabel: true, action: () => insertLinePrefix("+ ") },
-    { label: "Section", icon: <Heading className="w-3 h-3" />,     showLabel: true, action: () => insertLinePrefix("## ") },
+    { label: "Task",    icon: <CheckSquare className="w-3 h-3" />, action: () => insertLinePrefix("[] ") },
+    { label: "Event",   icon: <Calendar className="w-3 h-3" />,    action: () => insertLinePrefix("+ ") },
+    { label: "Section", icon: <Heading className="w-3 h-3" />,     action: () => insertLinePrefix("## ") },
     { label: "Bold",    icon: <Bold className="w-3 h-3" />,                         action: () => wrapSelection("**", "**") },
     { label: "Italic",  icon: <Italic className="w-3 h-3" />,                       action: () => wrapSelection("_", "_") },
     { label: "Strike",  icon: <Strikethrough className="w-3 h-3" />,                action: () => wrapSelection("~~", "~~") },
@@ -81,17 +80,16 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
 
   return (
     <div className={`flex flex-col-reverse md:flex-row flex-1 overflow-hidden border-r border-border${className ? ` ${className}` : ""}`}>
-      {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (right) */}
-      <div className="flex flex-wrap md:flex-col md:flex-nowrap items-center gap-2 px-2 py-3 border-t border-border md:border-t-0 md:border-l flex-shrink-0 md:justify-start md:items-start">
+      {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (left) */}
+      <div className="flex flex-wrap md:flex-col md:flex-nowrap items-center gap-2 px-2 py-3 border-t border-border md:border-t-0 md:border-r flex-shrink-0 md:justify-start md:items-start">
         {tools.map((tool) => (
           <button
             key={tool.label}
             onClick={tool.action}
             title={tool.label}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
+            className="flex items-center justify-center p-2 rounded-md text-xs text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
           >
             {tool.icon}
-            {tool.showLabel && <span>{tool.label}</span>}
           </button>
         ))}
       </div>
