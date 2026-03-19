@@ -256,16 +256,16 @@ export default function MobileView({
       {/* Nav backdrop — tap to close */}
       {navOpen && (
         <div
-          className="absolute inset-0 z-10"
+          className="absolute inset-0 z-20"
           onClick={() => setNavOpen(false)}
         />
       )}
 
-      {/* Nav panel — slides up from bottom */}
+      {/* Nav panel — slides up from bottom-right */}
       <div
-        className="absolute left-4 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-20 flex flex-col gap-0 transition-all duration-200 w-64 pt-1 pb-2"
+        className="absolute right-3 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-40 flex flex-col transition-all duration-200 w-64 p-2"
         style={{
-          bottom: "68px",
+          bottom: "8px",
           opacity: navOpen ? 1 : 0,
           pointerEvents: navOpen ? "auto" : "none",
           transform: navOpen ? "translateY(0)" : "translateY(6px)",
@@ -273,7 +273,7 @@ export default function MobileView({
       >
         {/* Agenda section */}
         <div className="flex-shrink-0">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-sidebar-border">
+          <div className="flex items-center justify-between px-2 py-2 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
               <NotebookPen className="w-3.5 h-3.5 text-muted-foreground" />
               <div className="relative" ref={agendaMenuRef}>
@@ -368,8 +368,8 @@ export default function MobileView({
         </div>
 
         {/* Modes section */}
-        <div className="flex-shrink-0 border-t border-sidebar-border">
-          <div className="flex items-center px-3 py-2 border-b border-sidebar-border">
+        <div className="flex-shrink-0 mt-2">
+          <div className="flex items-center px-2 py-2 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
               <Layers className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-sm font-medium text-sidebar-foreground">Modes</span>
@@ -412,7 +412,7 @@ export default function MobileView({
         </div>
 
         {/* Display mode */}
-        <div className="border-t border-sidebar-border px-3 py-2">
+        <div className="border-t border-sidebar-border px-2 py-2 mt-2">
           <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
           <div className="flex gap-1">
             {([
