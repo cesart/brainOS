@@ -28,7 +28,7 @@ Next.js 14 · TypeScript · Tailwind CSS · shadcn/ui · Airtable API · Deploye
 
 ## Design process
 
-The design work lives in `brainos-designs.pen` — a [Pencil](https://www.pencil.design) file with the full exploration: layout explorations, component details, type scale, and interaction specs. Open it in the Pencil app to see how the interface decisions were made before they became code.
+The design work lives in `brainos-designs.pen` [[view](brainos-designs.pen)] — a [Pencil](https://www.pencil.design) file with the full exploration: layout explorations, component details, type scale, and interaction specs. Open it in the Pencil app to see how the interface decisions were made before they became code.
 
 Most of the implementation was built hands-on using [Claude Code](https://claude.ai/code) as a development partner — iterating directly in the editor, making real-time decisions about interactions and edge cases rather than doing a full handoff. The point wasn't to skip the craft; it was to compress the gap between design intent and working product.
 
