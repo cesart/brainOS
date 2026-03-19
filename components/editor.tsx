@@ -80,9 +80,9 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
   ];
 
   return (
-    <div className={`flex flex-col flex-1 overflow-hidden border-r border-border${className ? ` ${className}` : ""}`}>
-      {/* Toolbar — all buttons same style, no dividers */}
-      <div className="flex flex-wrap items-center gap-2 px-2 py-4 border-border flex-shrink-0">
+    <div className={`flex flex-col-reverse md:flex-row flex-1 overflow-hidden border-r border-border${className ? ` ${className}` : ""}`}>
+      {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (right) */}
+      <div className="flex flex-wrap md:flex-col md:flex-nowrap items-center gap-2 px-2 py-3 border-t border-border md:border-t-0 md:border-l flex-shrink-0 md:justify-start md:items-start">
         {tools.map((tool) => (
           <button
             key={tool.label}
