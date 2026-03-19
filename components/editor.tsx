@@ -117,7 +117,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
       </div>
 
       {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (right) */}
-      <div className="flex flex-wrap md:flex-col md:flex-nowrap items-end gap-2 px-2 py-4 flex-shrink-0">
+      <div className="flex flex-row flex-nowrap overflow-x-auto items-center md:flex-col md:overflow-visible md:items-end gap-2 px-2 py-2 md:py-4 flex-shrink-0">
         {tools.map((tool) => (
           <button
             key={tool.label}
