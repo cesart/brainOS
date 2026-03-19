@@ -1,4 +1,4 @@
-# brainOS
+# 🧠 brainOS
 
 A personal life operating system — daily notes, task management, and agenda in one dark-mode interface, live on the web.
 
