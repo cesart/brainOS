@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Brain, PanelBottom, Calendar, CalendarCheck,
-  Layers, NotebookPen, EllipsisVertical, Plus,
+  Layers, NotebookPen,
   Glasses, Square, SquareCheck,
+  CalendarDays, CalendarRange, ChevronLeft, ChevronRight, ChevronDown,
+  Sun, Moon, Monitor,
 } from "lucide-react";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
 import Editor from "@/components/editor";
 import { Clock } from "@/components/clock";
+import MonthCalendar from "@/components/month-calendar";
 
 const MODE_COLORS: Record<number, string> = {
   0: "#6366f1", 1: "#10b981", 2: "#f59e0b",
@@ -17,6 +20,13 @@ const MODE_COLORS: Record<number, string> = {
 
 const SHEET_PEEK = 56;
 const SHEET_UP   = 360;
+
+function pad2(n: number): string { return String(n).padStart(2, "0"); }
+function addDays(dateISO: string, n: number): string {
+  const d = new Date(dateISO + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
 
 function getDayLabel(date: string, todayISO: string): string {
   if (date === todayISO) return "Today";
@@ -47,12 +57,50 @@ interface MobileViewProps {
 }
 
 export default function MobileView({
-  currentDay, todayISO, weekDates, activeDate, onSelectDate,
+  currentDay, todayISO, weekDates: _weekDates, activeDate, onSelectDate,
   collections, activeModeId, onSelectMode, items,
   dayEvents, allTasks, onToggleTask,
 }: MobileViewProps) {
   const [navOpen, setNavOpen] = useState(false);
   const [sheetUp, setSheetUp] = useState(false);
+  const [agendaView, setAgendaView] = useState<"month" | "week">("month");
+  const [agendaMenuOpen, setAgendaMenuOpen] = useState(false);
+  const agendaMenuRef = useRef<HTMLDivElement>(null);
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = new Date(activeDate + "T00:00:00");
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+  const [displayMode, setDisplayMode] = useState<"auto" | "light" | "dark">("dark");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("displayMode") as "auto" | "light" | "dark" | null;
+    if (saved) setDisplayMode(saved);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("displayMode", displayMode);
+    const html = document.documentElement;
+    if (displayMode === "light") html.classList.remove("dark");
+    else if (displayMode === "dark") html.classList.add("dark");
+    else html.classList.toggle("dark", window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }, [displayMode]);
+
+  useEffect(() => {
+    if (!agendaMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (agendaMenuRef.current && !agendaMenuRef.current.contains(e.target as Node)) {
+        setAgendaMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [agendaMenuOpen]);
+
+  useEffect(() => {
+    const d = new Date(activeDate + "T00:00:00");
+    setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
+  }, [activeDate]);
+
+  const rollingDates = [0, 1, 2, 3, 4].map((i) => addDays(todayISO, i));
 
   const pastDue   = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
@@ -184,7 +232,7 @@ export default function MobileView({
             {allTasks.length > 0 && (
               <section>
                 <div className="flex items-center gap-1.5 px-1.5 pb-2">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#6366f1" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                   <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -244,51 +292,107 @@ export default function MobileView({
       >
         {/* Agenda section */}
         <div className="flex-shrink-0">
-          <div className="flex items-center justify-between px-3 py-2.5 border-b border-sidebar-border">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
               <NotebookPen className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-sm font-medium text-sidebar-foreground">Agenda</span>
-            </div>
-            <button className="text-muted-foreground p-0.5">
-              <EllipsisVertical className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex flex-col gap-0.5 px-1 py-1">
-            {weekDates.map((date) => {
-              const isActive = date === activeDate;
-              const isToday  = date === todayISO;
-              const label    = getDayLabel(date, todayISO);
-              return (
+              <div className="relative" ref={agendaMenuRef}>
                 <button
-                  key={date}
-                  onClick={() => { onSelectDate(date); setNavOpen(false); }}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left w-full transition-colors ${
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-                  }`}
+                  onClick={() => setAgendaMenuOpen((o) => !o)}
+                  className="flex items-center gap-1 text-sm font-medium text-sidebar-foreground px-1 py-0.5 rounded hover:bg-sidebar-accent transition-colors -mx-1"
                 >
-                  {isToday
-                    ? <CalendarCheck className="w-4 h-4 flex-shrink-0" />
-                    : <Calendar className="w-4 h-4 flex-shrink-0" />
-                  }
-                  {label}
+                  Agenda
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
                 </button>
-              );
-            })}
+                {agendaMenuOpen && (
+                  <div className="absolute left-0 top-full mt-1 w-44 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
+                    <button
+                      onClick={() => { setAgendaView("month"); setAgendaMenuOpen(false); }}
+                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs transition-colors ${agendaView === "month" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"} hover:bg-sidebar-accent`}
+                    >
+                      <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                      View as month
+                    </button>
+                    <button
+                      onClick={() => { setAgendaView("week"); setAgendaMenuOpen(false); }}
+                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs transition-colors ${agendaView === "week" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"} hover:bg-sidebar-accent`}
+                    >
+                      <CalendarRange className="w-3.5 h-3.5 flex-shrink-0" />
+                      View as week
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-0.5">
+              {agendaView === "month" ? (
+                <>
+                  {activeDate !== todayISO && (
+                    <button
+                      onClick={() => { onSelectDate(todayISO); setCalMonth({ year: new Date(todayISO + "T00:00:00").getFullYear(), month: new Date(todayISO + "T00:00:00").getMonth() }); }}
+                      className="text-[10px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors px-1.5 py-1 leading-none rounded"
+                    >Today</button>
+                  )}
+                  <button onClick={() => setCalMonth((c) => c.month === 0 ? { year: c.year - 1, month: 11 } : { ...c, month: c.month - 1 })} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                    <ChevronLeft className="w-3 h-3" />
+                  </button>
+                  <button onClick={() => setCalMonth((c) => c.month === 11 ? { year: c.year + 1, month: 0 } : { ...c, month: c.month + 1 })} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </>
+              ) : (
+                activeDate !== todayISO && (
+                  <button
+                    onClick={() => onSelectDate(todayISO)}
+                    className="text-[10px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors px-1.5 py-1 leading-none rounded"
+                  >Today</button>
+                )
+              )}
+            </div>
           </div>
+          {agendaView === "month" ? (
+            <MonthCalendar
+              year={calMonth.year}
+              month={calMonth.month}
+              activeDate={activeDate}
+              todayISO={todayISO}
+              showWeekends={true}
+              onSelectDate={(d) => { onSelectDate(d); setNavOpen(false); }}
+            />
+          ) : (
+            <div className="flex flex-col gap-0.5 px-1 py-1">
+              {rollingDates.map((date) => {
+                const isActive = date === activeDate;
+                const isToday  = date === todayISO;
+                const label    = getDayLabel(date, todayISO);
+                return (
+                  <button
+                    key={date}
+                    onClick={() => { onSelectDate(date); setNavOpen(false); }}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-left w-full transition-colors ${
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    }`}
+                  >
+                    {isToday
+                      ? <CalendarCheck className="w-4 h-4 flex-shrink-0" />
+                      : <Calendar className="w-4 h-4 flex-shrink-0" />
+                    }
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Modes section */}
-        <div className="flex-shrink-0">
-          <div className="flex items-center justify-between px-3 py-2.5 border-b border-sidebar-border">
+        <div className="flex-shrink-0 border-t border-sidebar-border">
+          <div className="flex items-center px-3 py-2 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
               <Layers className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-sm font-medium text-sidebar-foreground">Modes</span>
             </div>
-            <button className="text-muted-foreground p-0.5">
-              <Plus className="w-4 h-4" />
-            </button>
           </div>
           <div className="flex flex-col gap-0.5 px-1 py-1">
             <button
@@ -321,6 +425,31 @@ export default function MobileView({
                 <span className="tabular-nums">
                   {items.filter((it) => it.collectionIds?.includes(col.id)).length}
                 </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Display mode */}
+        <div className="border-t border-sidebar-border px-3 py-2">
+          <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
+          <div className="flex gap-1">
+            {([
+              { id: "auto",  Icon: Monitor, label: "Auto"  },
+              { id: "light", Icon: Sun,     label: "Light" },
+              { id: "dark",  Icon: Moon,    label: "Dark"  },
+            ] as const).map(({ id, Icon, label }) => (
+              <button
+                key={id}
+                onClick={() => setDisplayMode(id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[10px] transition-colors ${
+                  displayMode === id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
               </button>
             ))}
           </div>

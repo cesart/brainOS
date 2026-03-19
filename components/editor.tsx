@@ -144,6 +144,12 @@ function parseInline(text: string): React.ReactNode {
 // ---------------------------------------------------------------------------
 function MarkdownLine({ line }: { line: string }) {
   if (line.trim() === "") return <p>{"\u00a0"}</p>;
+  if (line.trim() === "---") return (
+    <p className="relative">
+      <span className="invisible select-none">---</span>
+      <hr className="absolute inset-x-0 top-1/2 -translate-y-px border-t border-border" />
+    </p>
+  );
 
   const h3Match = line.match(/^###\s+(.*)/);
   const h2Match = line.match(/^##\s+(.*)/);
@@ -403,6 +409,22 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
     });
   }
 
+  function insertLine(content: string) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const pos = el.selectionStart;
+    const before = body.slice(0, pos);
+    const after = body.slice(pos);
+    const sep1 = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+    const sep2 = after.length > 0 && !after.startsWith("\n") ? "\n" : "";
+    const insertion = sep1 + content + sep2;
+    setBody(before + insertion + after);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = pos + insertion.length;
+      el.focus();
+    });
+  }
+
   function insertLinePrefix(prefix: string) {
     const el = textareaRef.current;
     if (!el) return;
@@ -438,6 +460,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
     { label: "Quote",   icon: <Quote className="w-3 h-3" />,                        action: () => insertLinePrefix("> ") },
     { label: "List",    icon: <List className="w-3 h-3" />,                         action: () => insertLinePrefix("- ") },
     { label: "Ordered", icon: <ListOrdered className="w-3 h-3" />,                  action: () => insertLinePrefix("1. ") },
+    { label: "Rule",    icon: <Minus className="w-3 h-3" />,                        action: () => insertLine("---") },
   ];
 
   return (

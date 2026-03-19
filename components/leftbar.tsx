@@ -5,6 +5,7 @@ import {
   Brain, PanelLeft, NotebookPen,
   Calendar, CalendarCheck, CalendarDays, CalendarRange, Layers, Maximize2,
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
+  Sun, Moon, Monitor,
 } from "lucide-react";
 import {
   Sidebar,
@@ -57,6 +58,26 @@ export default function LeftBar({
 }: LeftBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [displayMode, setDisplayMode] = useState<"auto" | "light" | "dark">("dark");
+
+  // Load saved display mode on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("displayMode") as "auto" | "light" | "dark" | null;
+    if (saved) setDisplayMode(saved);
+  }, []);
+
+  // Apply display mode to <html>
+  useEffect(() => {
+    localStorage.setItem("displayMode", displayMode);
+    const html = document.documentElement;
+    if (displayMode === "light") {
+      html.classList.remove("dark");
+    } else if (displayMode === "dark") {
+      html.classList.add("dark");
+    } else {
+      html.classList.toggle("dark", window.matchMedia("(prefers-color-scheme: dark)").matches);
+    }
+  }, [displayMode]);
 
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [agendaMenuOpen, setAgendaMenuOpen] = useState(false);
@@ -161,6 +182,30 @@ export default function LeftBar({
                   <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${wideMode ? "left-[14px]" : "left-0.5"}`} />
                 </div>
               </button>
+              <div className="h-px bg-sidebar-border mx-2" />
+              <div className="px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
+                <div className="flex gap-1">
+                  {([
+                    { id: "auto",  Icon: Monitor, label: "Auto"  },
+                    { id: "light", Icon: Sun,     label: "Light" },
+                    { id: "dark",  Icon: Moon,    label: "Dark"  },
+                  ] as const).map(({ id, Icon, label }) => (
+                    <button
+                      key={id}
+                      onClick={() => setDisplayMode(id)}
+                      className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[10px] transition-colors ${
+                        displayMode === id
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
