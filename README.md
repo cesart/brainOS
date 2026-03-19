@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# brainOS
 
-## Getting Started
+A personal life operating system — daily notes, task management, and agenda in one dark-mode interface, live on the web.
 
-First, run the development server:
+This started as a personal itch: I wanted a single place that surfaces what I need to act on today without the overhead of a full productivity suite. The design leans into density and calm — a lot of information without feeling cluttered.
+
+---
+
+## What it does
+
+- **Daily journal** with a custom markdown editor — transparent textarea over a rich-text render layer so formatting (tasks, events, headings, blockquotes) reads cleanly without toggling modes
+- **Mini calendar + week view** in the sidebar for quick date navigation
+- **Modes** (powered by Airtable) — collections that filter items into focused contexts
+- **Mobile view** — a distinct bottom-sheet layout optimized for phone use, not just a shrunk desktop
+- **Live clock**, contextual date labels (Today / Past / Future), and ambient details that make the interface feel grounded in the present
+
+---
+
+## Stack
+
+Next.js 14 · TypeScript · Tailwind CSS · shadcn/ui · Airtable API · Framer Motion · Deployed on Vercel
+
+---
+
+## Design process
+
+The design work lives in `brainos-designs.pen` — a [Pencil](https://www.pencil.design) file with the full exploration: layout explorations, component details, type scale, and interaction specs. Open it in the Pencil app to see how the interface decisions were made before they became code.
+
+Most of the implementation was built hands-on using [Claude Code](https://claude.ai/code) as a development partner — iterating directly in the editor, making real-time decisions about interactions and edge cases rather than doing a full handoff. The point wasn't to skip the craft; it was to compress the gap between design intent and working product.
+
+---
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Requires an `.env.local` with Airtable credentials (`AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID`).
