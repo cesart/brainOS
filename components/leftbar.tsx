@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-  Brain, PanelLeft, PanelLeftClose, PanelLeftOpen, NotebookPen,
+  Brain, PanelLeft, PanelLeftClose, NotebookPen,
   Calendar, CalendarCheck, CalendarDays, CalendarRange, Layers, Maximize2,
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Sun, Moon, Monitor,
@@ -160,7 +160,7 @@ export default function LeftBar({
             onClick={() => setMenuOpen((o) => !o)}
             className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded"
           >
-            <PanelLeftClose className="w-4 h-4" />
+            <PanelLeft className="w-4 h-4" />
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
