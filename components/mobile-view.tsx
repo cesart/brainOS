@@ -443,7 +443,7 @@ export default function MobileView({
               <button
                 key={id}
                 onClick={() => setDisplayMode(id)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[10px] transition-colors ${
+                className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[10px] leading-normal transition-colors ${
                   displayMode === id
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
