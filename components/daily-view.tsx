@@ -9,7 +9,7 @@ import RightBar from "@/components/rightbar";
 import MobileView from "@/components/mobile-view";
 import { Clock } from "@/components/clock";
 import { useIsMobileResolved } from "@/hooks/use-mobile";
-import { PanelLeft, Maximize2, Sun, Moon, Monitor } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, Maximize2, Sun, Moon, Monitor } from "lucide-react";
 
 // Auto-collapse sidebar below this desktop width
 const COLLAPSE_WIDTH = 1100;
@@ -177,7 +177,7 @@ export default function DailyView({
               onClick={() => setTopMenuOpen((o) => !o)}
               className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded"
             >
-              <PanelLeft className="w-4 h-4" />
+              <PanelLeftOpen className="w-4 h-4" />
             </button>
           </div>
           {topMenuOpen && (
@@ -186,7 +186,7 @@ export default function DailyView({
                 onClick={() => { setLeftBarOpen(true); setTopMenuOpen(false); }}
                 className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
               >
-                <PanelLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <PanelLeftOpen className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 Show sidebar
               </button>
               <button
