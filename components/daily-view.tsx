@@ -182,7 +182,7 @@ export default function DailyView({
         <div className={`group rounded-xl w-9 h-9 flex items-center justify-center transition-colors ${topMenuOpen ? "bg-sidebar-accent" : "bg-transparent hover:bg-sidebar-accent"}`}>
           <button
             onClick={() => setTopMenuOpen((o) => !o)}
-            className="text-muted-foreground group-hover:text-sidebar-foreground transition-colors p-1 rounded"
+            className="text-muted-foreground/40 group-hover:text-sidebar-foreground transition-colors p-1 rounded"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
