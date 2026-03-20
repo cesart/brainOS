@@ -172,7 +172,7 @@ export default function DailyView({
       {/* Collapsed sidebar button — fixed top-left when sidebar is hidden */}
       {!leftBarOpen && (
         <div className="fixed top-4 left-4 z-50" ref={topMenuRef}>
-          <div className="bg-sidebar-accent rounded-xl p-1.5">
+          <div className="bg-sidebar-accent rounded-xl w-9 h-9 flex items-center justify-center">
             <button
               onClick={() => setTopMenuOpen((o) => !o)}
               className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded"
