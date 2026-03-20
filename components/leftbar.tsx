@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Brain, PanelLeft, PanelLeftClose, NotebookPen,
-  Calendar, CalendarCheck, CalendarDays, CalendarRange, Layers, Maximize2,
+  Calendar, CalendarCheck, CalendarDays, CalendarRange, Layers, UnfoldHorizontal,
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Sun, Moon, Monitor,
 } from "lucide-react";
@@ -175,7 +175,7 @@ export default function LeftBar({
                 onClick={() => { onToggleWide(); }}
                 className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
               >
-                <Maximize2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <UnfoldHorizontal className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 <span className="flex-1 text-left">Full width</span>
                 <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${wideMode ? "bg-primary" : "bg-sidebar-border"}`}>
                   <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${wideMode ? "left-[14px]" : "left-0.5"}`} />
