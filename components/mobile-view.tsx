@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Brain, PanelBottom, Calendar, CalendarCheck,
   Layers, NotebookPen,
@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Sun, Moon, Smartphone,
 } from "lucide-react";
+import { motion, LayoutGroup } from "framer-motion";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
 import Editor from "@/components/editor";
 import { Clock } from "@/components/clock";
@@ -28,8 +29,7 @@ function addDays(dateISO: string, n: number): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-function getDayLabel(date: string, todayISO: string): string {
-  if (date === todayISO) return "Today";
+function getDayLabel(date: string): string {
   return new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "short", month: "short", day: "numeric",
   });
@@ -110,61 +110,80 @@ export default function MobileView({
   return (
     <div className="relative h-dvh overflow-hidden bg-background flex flex-col">
 
-      {/* Top brand bar */}
+      {/* Top brand bar — grid collapse (reliable on iOS Safari) */}
       <div
-        className="relative z-30 flex-shrink-0 flex items-center px-4 py-4 bg-sidebar border-b border-sidebar-border transition-opacity duration-300"
-        style={{ opacity: editorFocused ? 0 : 1, pointerEvents: editorFocused ? "none" : "auto" }}
+        className="z-30 flex-shrink-0"
+        style={{
+          display: "grid",
+          gridTemplateRows: editorFocused ? "0fr" : "1fr",
+          opacity: editorFocused ? 0 : 1,
+          pointerEvents: editorFocused ? "none" : "auto",
+          transition: "grid-template-rows 0.3s ease, opacity 0.3s ease",
+        }}
       >
-        <div className="flex items-center gap-2.5 flex-1">
-          <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
-            <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
+        <div className="overflow-hidden">
+          <div className="flex items-center px-4 py-4 bg-sidebar border-b border-sidebar-border">
+            <div className="flex items-center gap-2.5 flex-1">
+              <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
+                <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
+              </div>
+              <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => { setNavOpen(!navOpen); setOverviewOpen(false); }}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+              >
+                <PanelBottom className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => { setOverviewOpen(!overviewOpen); setNavOpen(false); }}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+              >
+                <ClipboardList className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => { setOverviewOpen(!overviewOpen); setNavOpen(false); }}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-          >
-            <ClipboardList className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => { setNavOpen(!navOpen); setOverviewOpen(false); }}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-          >
-            <PanelBottom className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
       {/* Main content — blurs when nav is open */}
       <div
         className="flex flex-col flex-1 min-h-0 overflow-hidden transition-[filter] duration-300"
-        style={{ filter: navOpen ? "blur(5px)" : "none" }}
+        style={{ filter: (navOpen || overviewOpen) ? "blur(5px)" : "none" }}
       >
-        {/* Date / time bar */}
+        {/* Date / time bar — grid collapse */}
         <div
-          className="flex items-center justify-between pl-2 pr-4 py-4 border-b border-border flex-shrink-0 transition-opacity duration-300"
-          style={{ opacity: editorFocused ? 0 : 1 }}
+          className="flex-shrink-0"
+          style={{
+            display: "grid",
+            gridTemplateRows: editorFocused ? "0fr" : "1fr",
+            opacity: editorFocused ? 0 : 1,
+            transition: "grid-template-rows 0.3s ease, opacity 0.3s ease",
+          }}
         >
-          <div>
-            <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${activeDate === todayISO ? "opacity-100" : "opacity-35"}`}>
-              {activeDate === todayISO ? "Today" : activeDate < todayISO ? "Past" : "Future"}
-            </p>
-            <h1 className="text-2xl font-bold leading-tight">
-              {new Date(activeDate + "T00:00:00").toLocaleDateString("en-US", {
-                weekday: "short", month: "short", day: "numeric",
-              })}
-            </h1>
+          <div className="overflow-hidden">
+            <div className="flex items-center justify-between pl-2 pr-4 py-4 border-b border-border">
+              <div>
+                <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${activeDate === todayISO ? "opacity-100" : "opacity-35"}`}>
+                  {activeDate === todayISO ? "Today" : activeDate < todayISO ? "Past" : "Future"}
+                </p>
+                <h1 className="text-2xl font-bold leading-tight">
+                  {new Date(activeDate + "T00:00:00").toLocaleDateString("en-US", {
+                    weekday: "short", month: "short", day: "numeric",
+                  })}
+                </h1>
+              </div>
+              <span className="text-[12px] text-muted-foreground tabular-nums font-mono">
+                <Clock />
+              </span>
+            </div>
           </div>
-          <span className="text-[12px] text-muted-foreground tabular-nums font-mono">
-            <Clock />
-          </span>
         </div>
 
         {/* Editor */}
         <div
-          className="flex-1 min-h-0 overflow-hidden"
+          className="flex flex-col flex-1 min-h-0 overflow-hidden"
           onFocus={() => setEditorFocused(true)}
           onBlur={() => setEditorFocused(false)}
         >
@@ -185,11 +204,12 @@ export default function MobileView({
         />
       )}
 
-      {/* Overview popup — below brand bar, right-aligned */}
+      {/* Overview popup — below brand bar, aligned to ClipboardList button (rightmost) */}
       <div
-        className="absolute right-3 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-40 w-72 transition-all duration-200"
+        className="absolute bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-40 w-72 transition-all duration-200"
         style={{
           top: "68px",
+          right: "12px",
           opacity: overviewOpen ? 1 : 0,
           pointerEvents: overviewOpen ? "auto" : "none",
           transform: overviewOpen ? "translateY(0)" : "translateY(-6px)",
@@ -228,24 +248,29 @@ export default function MobileView({
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                 <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
               </div>
-              <div className="flex flex-col gap-0.5">
-                {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completed].map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
-                    style={t.completed ? { opacity: 0.75 } : {}}
-                    onClick={() => onToggleTask(t.id, !t.completed)}
-                  >
-                    {t.completed
-                      ? <SquareCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                      : <Square className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                    }
-                    <span className={`text-sm leading-snug ${t.completed ? "text-muted-foreground" : "text-foreground"}`}>
-                      {t.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <LayoutGroup>
+                <div className="flex flex-col gap-0.5">
+                  {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completed].map((t) => (
+                    <motion.div
+                      key={t.id}
+                      layout
+                      layoutId={t.id}
+                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                      className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
+                      style={t.completed ? { opacity: 0.75 } : {}}
+                      onClick={() => onToggleTask(t.id, !t.completed)}
+                    >
+                      {t.completed
+                        ? <SquareCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        : <Square className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      }
+                      <span className={`text-sm leading-snug ${t.completed ? "text-muted-foreground" : "text-foreground"}`}>
+                        {t.name}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </LayoutGroup>
             </section>
           )}
           {dayEvents.length === 0 && allTasks.length === 0 && (
@@ -254,11 +279,12 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* Nav panel — drops down from top-right */}
+      {/* Nav panel — drops down from top-right, aligned to PanelBottom button (left of pair) */}
       <div
-        className="absolute right-3 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-40 flex flex-col transition-all duration-200 w-64 p-2"
+        className="absolute bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden z-40 flex flex-col transition-all duration-200 w-64 p-2"
         style={{
           top: "68px",
+          right: "52px",
           opacity: navOpen ? 1 : 0,
           pointerEvents: navOpen ? "auto" : "none",
           transform: navOpen ? "translateY(0)" : "translateY(-6px)",
@@ -338,7 +364,7 @@ export default function MobileView({
               {rollingDates.map((date) => {
                 const isActive = date === activeDate;
                 const isToday  = date === todayISO;
-                const label    = getDayLabel(date, todayISO);
+                const label    = getDayLabel(date);
                 return (
                   <button
                     key={date}

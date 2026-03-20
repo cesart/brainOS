@@ -257,6 +257,7 @@ const MarkdownView = React.forwardRef<HTMLDivElement, { body: string }>(
 export default function Editor({ dayId, initialBody, events, className }: EditorProps) {
   const [body, setBody] = useState(initialBody);
   const [atBottom, setAtBottom] = useState(false);
+  const [kbVisible, setKbVisible] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const markdownRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef(body);
@@ -282,6 +283,15 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
       body: JSON.stringify({ body: bodyRef.current }),
     });
   }
+
+  // Detect iOS soft keyboard via visualViewport shrink
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    function check() { setKbVisible(vv!.height < window.innerHeight - 100); }
+    vv.addEventListener("resize", check);
+    return () => vv.removeEventListener("resize", check);
+  }, []);
 
   // Save on blur, page hide, and every 5s while dirty
   useEffect(() => {
@@ -545,7 +555,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
       </div>
 
       {/* Toolbar — horizontal on mobile (bottom), vertical on desktop (right) */}
-      <div className="flex flex-row flex-nowrap overflow-x-auto items-center md:flex-col md:overflow-visible md:items-end gap-2 px-2 py-2 md:py-4 flex-shrink-0">
+      <div className={`flex flex-row flex-nowrap overflow-x-auto items-center md:flex-col md:overflow-visible md:items-end gap-2 px-2 md:py-4 flex-shrink-0 ${kbVisible ? "py-1" : "py-2"}`}>
         {tools.map((tool) => (
           <button
             key={tool.label}
