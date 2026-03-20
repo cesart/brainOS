@@ -58,7 +58,12 @@ export interface AirtableDay {
 }
 
 export function localDateISO(offsetDays = 0): string {
-  const d = new Date();
+  const tz = process.env.APP_TIMEZONE ?? "America/New_York";
+  const base = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date()); // "YYYY-MM-DD"
+  if (offsetDays === 0) return base;
+  const d = new Date(base + "T00:00:00");
   d.setDate(d.getDate() + offsetDays);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
