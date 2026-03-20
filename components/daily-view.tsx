@@ -170,17 +170,24 @@ export default function DailyView({
       </div>
 
       {/* Collapsed sidebar button — fixed top-left when sidebar is hidden */}
-      {!leftBarOpen && (
-        <div className="fixed top-[30px] left-4 z-50" ref={topMenuRef}>
-          <div className={`rounded-xl w-9 h-9 flex items-center justify-center transition-colors ${topMenuOpen ? "bg-sidebar-accent" : "bg-transparent hover:bg-sidebar-accent"}`}>
-            <button
-              onClick={() => setTopMenuOpen((o) => !o)}
-              className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded"
-            >
-              <PanelLeft className="w-4 h-4" />
-            </button>
-          </div>
-          {topMenuOpen && (
+      <div
+        className="fixed top-[30px] left-4 z-50 transition-opacity duration-200"
+        style={{
+          opacity: leftBarOpen ? 0 : 1,
+          pointerEvents: leftBarOpen ? "none" : "auto",
+          transitionDelay: leftBarOpen ? "0ms" : "150ms",
+        }}
+        ref={topMenuRef}
+      >
+        <div className={`rounded-xl w-9 h-9 flex items-center justify-center transition-colors ${topMenuOpen ? "bg-sidebar-accent" : "bg-transparent hover:bg-sidebar-accent"}`}>
+          <button
+            onClick={() => setTopMenuOpen((o) => !o)}
+            className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        </div>
+        {topMenuOpen && (
             <div className="absolute left-0 top-full mt-1 w-48 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
               <button
                 onClick={() => { setLeftBarOpen(true); setTopMenuOpen(false); }}
@@ -226,7 +233,6 @@ export default function DailyView({
             </div>
           )}
         </div>
-      )}
 
       <SidebarInset className="flex flex-col overflow-hidden min-w-0">
         {/* Top bar */}
