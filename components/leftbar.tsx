@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import {
-  Brain, PanelLeft, SquareArrowLeft, NotebookPen,
+  Brain, PanelLeft, SquareChevronLeft, NotebookPen,
   Calendar, CalendarCheck, CalendarDays, CalendarRange, Layers, UnfoldHorizontal,
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Sun, Moon, Monitor,
@@ -168,7 +168,7 @@ export default function LeftBar({
                 onClick={() => { onHide?.(); setMenuOpen(false); }}
                 className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
               >
-                <SquareArrowLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <SquareChevronLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 Hide sidebar
               </button>
               <button
