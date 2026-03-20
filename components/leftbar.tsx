@@ -158,7 +158,7 @@ export default function LeftBar({
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded flex items-center justify-center"
+            className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded"
           >
             <PanelLeft className="w-4 h-4" />
           </button>

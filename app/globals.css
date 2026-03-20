@@ -5,6 +5,8 @@
 @tailwind utilities;
 
 @layer base {
+  button { line-height: 0; }
+
   :root {
     --font-sans: 'Mona Sans', sans-serif;
     --background: oklch(1 0 0);
