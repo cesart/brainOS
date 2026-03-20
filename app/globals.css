@@ -6,6 +6,7 @@
 
 @layer base {
   :root {
+    --font-sans: 'Mona Sans', sans-serif;
     --background: oklch(1 0 0);
     --foreground: oklch(0.216 0.006 56.043);
     --card: oklch(1 0 0);

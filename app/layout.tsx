@@ -1,17 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
 import { DM_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
-
-const monaSans = localFont({
-  src: [
-    { path: "../public/fonts/MonaSans.woff2",        style: "normal", weight: "200 900" },
-    { path: "../public/fonts/MonaSans-italic.woff2", style: "italic", weight: "200 900" },
-  ],
-  variable: "--font-sans",
-  display: "block",
-});
 
 const dmMono = DM_Mono({
   subsets: ["latin"],
@@ -46,7 +36,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${monaSans.variable} ${dmMono.variable} dark`}>
+    <html lang="en" className={`${dmMono.variable} dark`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,200..900;1,200..900&display=block"
+          rel="stylesheet"
+        />
+      </head>
       <body className="font-sans antialiased overflow-hidden">
         <TooltipProvider>{children}</TooltipProvider>
       </body>
