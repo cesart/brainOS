@@ -10,8 +10,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        mono: ["var(--font-mono)"],
+        sans: ['"Mona Sans"', "sans-serif"],
+        mono: ['"DM Mono"', "monospace"],
       },
       borderRadius: {
         lg: "var(--radius)",

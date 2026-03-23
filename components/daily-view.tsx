@@ -78,7 +78,8 @@ export default function DailyView({
   }
 
   async function toggleTask(itemId: string, completed: boolean) {
-    setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, completed } : i)));
+    const today = todayISO;
+    setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, completed, completedDate: completed ? today : undefined } : i)));
     await fetch(`/api/items/${itemId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

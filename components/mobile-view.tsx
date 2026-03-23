@@ -97,7 +97,7 @@ export default function MobileView({
   const dueToday  = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = allTasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
   const noDate    = allTasks.filter((t) => !t.completed && !t.dueDate);
-  const completed = activeDate === todayISO ? allTasks.filter((t) => t.completed) : [];
+  const completed = allTasks.filter((t) => t.completed && t.completedDate === activeDate);
 
   // const sheetHeight = sheetUp ? SHEET_UP : SHEET_PEEK;
   // const touchStartY = useRef(0);

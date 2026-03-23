@@ -1,24 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
-import { DM_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
-
-const monaSans = localFont({
-  src: [
-    { path: "../public/fonts/MonaSans.woff2",        style: "normal", weight: "200 900" },
-    { path: "../public/fonts/MonaSans-italic.woff2", style: "italic", weight: "200 900" },
-  ],
-  variable: "--font-sans",
-  display: "block",
-});
-
-const dmMono = DM_Mono({
-  subsets: ["latin"],
-  weight: ["300", "400", "500"],
-  variable: "--font-mono",
-  display: "block",
-});
 
 export const metadata: Metadata = {
   title: "brainOS",
@@ -46,7 +28,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${monaSans.variable} ${dmMono.variable} dark`}>
+    <html lang="en" className="dark">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Mona+Sans:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet" />
+      </head>
       <body className="font-sans antialiased overflow-hidden">
         <TooltipProvider>{children}</TooltipProvider>
       </body>

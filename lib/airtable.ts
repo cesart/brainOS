@@ -18,6 +18,7 @@ const FIELDS = {
     TYPE: "fldlAy4l7dydv6zrP",
     DUE_DATE: "fldHfEWET20rCSeqa",
     COMPLETED: "fldddpFYA0f1N8KyE",
+    COMPLETED_DATE: "fld08hCZYOD7UmjDU",
     CREATED_DATE: "fldq5uEy5NNFB88x9",
     COLLECTION: "fldfHvzyaxDIfKKGB",
     DAY: "fldpTt7AIKEuzO94l",
@@ -44,6 +45,7 @@ export interface AirtableItem {
   type?: ItemType;
   dueDate?: string;
   completed: boolean;
+  completedDate?: string;
   createdDate?: string;
   collectionIds?: string[];
   dayIds?: string[];
@@ -92,6 +94,7 @@ function mapItem(r: Airtable.Record<Airtable.FieldSet>): AirtableItem {
     type: r.get("Type") as ItemType | undefined,
     dueDate: r.get("Due Date") as string | undefined,
     completed: (r.get("Completed") as boolean) ?? false,
+    completedDate: r.get("Completed Date") as string | undefined,
     createdDate: r.get("Created Date") as string | undefined,
     collectionIds: r.get("Collection") as string[] | undefined,
     dayIds: r.get("Day") as string[] | undefined,
@@ -151,7 +154,12 @@ export async function updateItem(
   }
   if (data.type !== undefined) fields[FIELDS.ITEMS.TYPE] = data.type;
   if (data.dueDate !== undefined) fields[FIELDS.ITEMS.DUE_DATE] = data.dueDate ?? "";
-  if (data.completed !== undefined) fields[FIELDS.ITEMS.COMPLETED] = data.completed;
+  if (data.completed !== undefined) {
+    fields[FIELDS.ITEMS.COMPLETED] = data.completed;
+    fields[FIELDS.ITEMS.COMPLETED_DATE] = data.completed
+      ? new Date().toISOString().split("T")[0]
+      : null;
+  }
   if (data.collectionIds !== undefined) fields[FIELDS.ITEMS.COLLECTION] = data.collectionIds;
   await base(TABLES.ITEMS).update(id, fields as Airtable.FieldSet);
   return getItem(id);

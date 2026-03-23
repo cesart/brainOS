@@ -70,7 +70,7 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
   const dueToday  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
   const noDate    = tasks.filter((t) => !t.completed && !t.dueDate);
-  const completed = activeDate === todayISO ? tasks.filter((t) => t.completed) : [];
+  const completed = tasks.filter((t) => t.completed && t.completedDate === activeDate);
 
   return (
     <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto">
