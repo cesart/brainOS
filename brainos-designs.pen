@@ -6281,7 +6281,7 @@
                       "id": "07bFJ",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -6976,7 +6976,7 @@
                                   "type": "icon_font",
                                   "id": "gsKJM",
                                   "name": "evt1Icon",
-                                  "width": 26.08608882424896,
+                                  "width": 52.011719570991296,
                                   "height": 16,
                                   "iconFontName": "calendar",
                                   "iconFontFamily": "lucide",
@@ -7031,7 +7031,7 @@
                                   "type": "icon_font",
                                   "id": "ATnOI",
                                   "name": "evt1Icon",
-                                  "width": 27.740539746444046,
+                                  "width": 62.48652197002751,
                                   "height": 16,
                                   "iconFontName": "calendar",
                                   "iconFontFamily": "lucide",
@@ -7571,7 +7571,7 @@
                       "id": "4Qgsx",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -8037,7 +8037,7 @@
                       "name": "evtSectionLabel",
                       "fill": "$--muted",
                       "textGrowth": "fixed-width",
-                      "width": 0.1688582827232187,
+                      "width": 0.08017149362546348,
                       "content": "UPCOMING EVENTS",
                       "fontFamily": "Inter",
                       "fontSize": 10,
@@ -10164,7 +10164,7 @@
                   "id": "uWUkb",
                   "name": "rbHeader",
                   "width": "fill_container",
-                  "height": "fit_content(2.646013942653645)",
+                  "height": "fit_content(5.144343632230993)",
                   "stroke": {
                     "align": "inside",
                     "thickness": {
@@ -10455,7 +10455,7 @@
                       "id": "qS4DL",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -16023,7 +16023,7 @@
                       "id": "r9mWb",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -18888,7 +18888,7 @@
                       "name": "evtSectionLabel",
                       "fill": "$--muted",
                       "textGrowth": "fixed-width",
-                      "width": 0.1688582827232187,
+                      "width": 0.08017149362546348,
                       "content": "UPCOMING EVENTS",
                       "fontFamily": "Inter",
                       "fontSize": 10,
@@ -19736,7 +19736,7 @@
                   "id": "QhP06",
                   "name": "rbHeader",
                   "width": "fill_container",
-                  "height": "fit_content(4.144915758873283)",
+                  "height": "fit_content(10.880521645577664)",
                   "stroke": {
                     "align": "inside",
                     "thickness": {
@@ -21956,7 +21956,7 @@
                       "id": "77oxQ",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -22532,7 +22532,7 @@
                       "name": "handle",
                       "fill": "$--sidebar-border",
                       "width": 80,
-                      "height": 17.30598701905045
+                      "height": 9.029965822500532
                     },
                     {
                       "type": "frame",
@@ -24351,7 +24351,7 @@
                       "id": "GGzqj",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -27788,7 +27788,7 @@
                       "id": "VNed1",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -28369,7 +28369,7 @@
                       "name": "handle",
                       "fill": "$--sidebar-border",
                       "width": 80,
-                      "height": 17.30598701905045
+                      "height": 9.029965822500532
                     },
                     {
                       "type": "frame",
@@ -30184,7 +30184,7 @@
                       "id": "o3zRo",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -31481,7 +31481,7 @@
                       "id": "9RGyo",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -32062,7 +32062,7 @@
                       "name": "handle",
                       "fill": "$--sidebar-border",
                       "width": 80,
-                      "height": 17.30598701905045
+                      "height": 9.029965822500532
                     },
                     {
                       "type": "frame",
@@ -33881,7 +33881,7 @@
                       "id": "xrtUc",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -37323,7 +37323,7 @@
                       "id": "2RfO9",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -37909,7 +37909,7 @@
                       "name": "handle",
                       "fill": "$--sidebar-border",
                       "width": 80,
-                      "height": 17.30598701905045
+                      "height": 9.029965822500532
                     },
                     {
                       "type": "frame",
@@ -39724,7 +39724,7 @@
                       "id": "vUsly",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -42054,25 +42054,10 @@
       ]
     },
     {
-      "type": "rectangle",
-      "id": "BDAzA",
-      "x": 4582,
-      "y": 0,
-      "name": "desktop.png",
-      "fill": {
-        "type": "image",
-        "enabled": true,
-        "url": "../image.png",
-        "mode": "fill"
-      },
-      "width": "fill_container(1440)",
-      "height": "fill_container(940)"
-    },
-    {
       "type": "frame",
       "id": "spd41",
-      "x": 4582,
-      "y": 1077,
+      "x": 4635,
+      "y": 0,
       "name": "today (desktop)",
       "theme": {
         "Mode": "Dark"
@@ -43278,7 +43263,7 @@
                       "id": "xtDxu",
                       "name": "dateHeading",
                       "fill": "$--foreground",
-                      "content": "Tue Mar 17",
+                      "content": "Tue Feb 17",
                       "fontFamily": "Inter",
                       "fontSize": 24,
                       "fontWeight": "700"
@@ -43293,7 +43278,8 @@
                   "content": "8:34 AM",
                   "textAlign": "right",
                   "fontFamily": "DM Mono",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -43886,7 +43872,7 @@
                                   "type": "icon_font",
                                   "id": "I6fdD",
                                   "name": "evt1Icon",
-                                  "width": 26.08608882424896,
+                                  "width": 52.011719570991296,
                                   "height": 16,
                                   "iconFontName": "calendar",
                                   "iconFontFamily": "lucide",
@@ -43941,7 +43927,7 @@
                                   "type": "icon_font",
                                   "id": "7wUeO",
                                   "name": "evt1Icon",
-                                  "width": 27.740539746444046,
+                                  "width": 62.48652197002751,
                                   "height": 16,
                                   "iconFontName": "calendar",
                                   "iconFontFamily": "lucide",
