@@ -9,7 +9,7 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      fontFamily: {
+fontFamily: {
         sans: ['"Mona Sans"', "sans-serif"],
         mono: ['"DM Mono"', "monospace"],
       },
