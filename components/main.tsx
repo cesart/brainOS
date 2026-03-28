@@ -282,7 +282,7 @@ export default function DailyView({
             }}
           >
             <div className="overflow-hidden">
-              <div className="flex items-center justify-between pl-2 pr-4 py-4 border-b border-border">
+              <div className="flex items-center justify-between px-4 py-4 border-b border-border">
                 <div>
                   <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
                     {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
@@ -335,8 +335,8 @@ export default function DailyView({
       </SidebarProvider>
 
       {/* ── TABLET (md→lg): Hover-triggered right panel ───────────────── */}
-      <div className="group/rightbar hidden sm:block lg:hidden fixed right-0 top-0 bottom-0 w-3 z-40">
-        <div className="absolute right-0 top-0 bottom-0 w-80 translate-x-full group-hover/rightbar:translate-x-0 transition-transform duration-300 ease-out bg-background border-l border-border shadow-2xl overflow-y-auto">
+      <div className="group/rightbar hidden sm:block lg:hidden fixed right-0 top-0 bottom-0 w-4 z-40">
+        <div className="absolute right-4 top-4 bottom-4 w-72 translate-x-[calc(100%+1rem)] group-hover/rightbar:translate-x-0 transition-transform duration-300 ease-out bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden">
           <RightBar
             events={dayEvents}
             tasks={allTasks}
@@ -586,7 +586,7 @@ export default function DailyView({
           </button>
         </div>
         {topMenuOpen && (
-          <div className="absolute left-0 top-full mt-1 w-48 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
+          <div className="absolute left-0 top-full mt-1 w-48 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl z-50 py-1 overflow-hidden">
             <button
               onClick={() => { setLeftBarOpen(true); setTopMenuOpen(false); }}
               className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"

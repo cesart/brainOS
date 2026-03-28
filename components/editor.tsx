@@ -242,7 +242,7 @@ const MarkdownView = React.forwardRef<HTMLDivElement, { body: string }>(
   function MarkdownView({ body }, ref) {
     const lines = body.split("\n");
     return (
-      <div ref={ref} className="flex flex-col px-2 py-2 leading-relaxed text-base text-foreground">
+      <div ref={ref} className="flex flex-col px-4 py-4 leading-relaxed text-base text-foreground">
         {lines.map((line, i) => (
           <MarkdownLine key={i} line={line} />
         ))}
@@ -476,7 +476,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
   ];
 
   return (
-    <div className={`flex flex-col md:flex-row flex-1 overflow-hidden border-r border-border${className ? ` ${className}` : ""}`}>
+    <div className={`flex flex-col md:flex-row flex-1 overflow-hidden md:border-r md:border-border${className ? ` ${className}` : ""}`}>
       <div className="flex flex-col flex-1 overflow-hidden">
 
         {/* Editor area — rendered view always visible, transparent textarea captures input */}
@@ -524,7 +524,7 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
               setAtBottom(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
             }}
             style={{ color: "transparent", caretColor: "var(--foreground)" }}
-            className="absolute inset-0 w-full h-full bg-transparent resize-none outline-none p-2 leading-relaxed"
+            className="absolute inset-0 w-full h-full bg-transparent resize-none outline-none p-4 leading-relaxed"
           />
         </div>
 
