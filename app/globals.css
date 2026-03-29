@@ -94,3 +94,18 @@
     text-wrap: balance;
   }
 }
+
+/* ── Editor overlay prose styles ──────────────────────────────────────────── */
+.editor-prose {
+  font-size: 1rem;
+  line-height: 1.85;
+  color: var(--foreground);
+}
+
+/* All lines are <p> tags; no extra margin between them so overlay aligns
+   perfectly with the textarea's line height */
+.editor-prose p {
+  margin: 0;
+  min-height: 1.85em;
+  position: relative;
+}
