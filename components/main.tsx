@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
 import LeftBar from "@/components/leftbar";
@@ -10,10 +10,10 @@ import MonthCalendar from "@/components/calendar";
 import { Clock } from "@/components/clock";
 import { motion, LayoutGroup } from "framer-motion";
 import {
-  Brain, PanelBottom, ClipboardList,
+  Brain, PanelLeft, PanelBottom, ClipboardList,
   Layers, NotebookPen, Calendar, CalendarCheck,
-  Square, SquareCheck,
-  Sun, Moon, Monitor,
+  Square, SquareCheck, SquareChevronRight,
+  UnfoldHorizontal, Sun, Moon, Monitor,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
 } from "lucide-react";
 
@@ -67,6 +67,8 @@ export default function DailyView({
   // ── Desktop ─────────────────────────────────────────────────────────
   const [leftBarOpen, setLeftBarOpen] = useState(true);
   const [wideMode, setWideMode] = useState(false);
+  const [topMenuOpen, setTopMenuOpen] = useState(false);
+  const topMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Mobile ──────────────────────────────────────────────────────────
   const [navOpen, setNavOpen] = useState(false);
@@ -103,6 +105,15 @@ export default function DailyView({
     const d = new Date(activeDate + "T00:00:00");
     setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
   }, [activeDate]);
+
+  useEffect(() => {
+    if (!topMenuOpen) return;
+    function onClick(e: MouseEvent) {
+      if (topMenuRef.current && !topMenuRef.current.contains(e.target as Node)) setTopMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [topMenuOpen]);
 
 
   useEffect(() => {
@@ -557,30 +568,53 @@ export default function DailyView({
         </div>
       </div>
 
-      {/* ── DESKTOP: Peekaboo leftbar when sidebar is collapsed ──────── */}
+      {/* ── DESKTOP: Collapsed sidebar button — peekaboo on hover ──────── */}
       <div
-        className="group/leftbar hidden sm:block fixed left-0 top-0 bottom-0 w-4 z-40 transition-opacity duration-200"
+        className="group/leftbtn hidden sm:block fixed left-0 top-0 bottom-0 w-4 z-50 transition-opacity duration-200"
         style={{
           opacity: leftBarOpen ? 0 : 1,
           pointerEvents: leftBarOpen ? "none" : "auto",
           transitionDelay: leftBarOpen ? "0ms" : "150ms",
         }}
       >
-        <div className="absolute left-4 top-4 bottom-4 w-64 -translate-x-[calc(100%+1rem)] group-hover/leftbar:translate-x-0 transition-transform duration-300 ease-out bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden">
-          <SidebarProvider className="h-full w-full" style={{ minHeight: 0 } as React.CSSProperties}>
-            <LeftBar
-              todayISO={todayISO}
-              weekDates={weekDates}
-              activeDate={activeDate}
-              onSelectDate={switchDay}
-              collections={collections}
-              activeModeId={activeModeId}
-              onSelectMode={setActiveModeId}
-              items={items}
-              wideMode={wideMode}
-              onToggleWide={() => setWideMode((w) => !w)}
-            />
-          </SidebarProvider>
+        <div
+          className="absolute top-[22px] left-0 -translate-x-full group-hover/leftbtn:translate-x-4 transition-transform duration-300 ease-out"
+          ref={topMenuRef}
+        >
+          <div className={`rounded-xl w-9 h-9 flex items-center justify-center transition-colors ${topMenuOpen ? "bg-sidebar-accent" : "bg-transparent hover:bg-sidebar-accent"}`}>
+            <button
+              onClick={() => setTopMenuOpen((o) => !o)}
+              className="text-muted-foreground/40 hover:text-sidebar-foreground transition-colors p-1 rounded"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+          </div>
+          {topMenuOpen && (
+            <div className="absolute left-0 top-full mt-1 w-48 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl z-50 py-1 overflow-hidden">
+              <button
+                onClick={() => { setLeftBarOpen(true); setTopMenuOpen(false); }}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
+              >
+                <SquareChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                Show sidebar
+              </button>
+              <button
+                onClick={() => { setWideMode((w) => !w); setTopMenuOpen(false); }}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
+              >
+                <UnfoldHorizontal className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <span className="flex-1 text-left">Full width</span>
+                <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${wideMode ? "bg-primary" : "bg-sidebar-border"}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${wideMode ? "left-[14px]" : "left-0.5"}`} />
+                </div>
+              </button>
+              <div className="h-px bg-sidebar-border mx-2 mt-1" />
+              <div className="px-3 py-2">
+                <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
+                {themeButtons}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
