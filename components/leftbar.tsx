@@ -164,13 +164,15 @@ export default function LeftBar({
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
-              <button
-                onClick={() => { onHide?.(); setMenuOpen(false); }}
-                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
-              >
-                <SquareChevronLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                Hide sidebar
-              </button>
+              {onHide && (
+                <button
+                  onClick={() => { onHide(); setMenuOpen(false); }}
+                  className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
+                >
+                  <SquareChevronLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  Hide sidebar
+                </button>
+              )}
               <button
                 onClick={() => { onToggleWide(); }}
                 className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
