@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
 import LeftBar from "@/components/leftbar";
 import Editor, { EditorHandle } from "@/components/editor";
