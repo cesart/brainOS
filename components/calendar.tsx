@@ -15,26 +15,59 @@ function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-function generateCells(year: number, month: number, showWeekends: boolean): (string | null)[] {
+type Cell = string | { overflow: true; day: number };
+
+function generateCells(year: number, month: number, showWeekends: boolean): Cell[] {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (string | null)[] = [];
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const cells: Cell[] = [];
 
   if (showWeekends) {
     // 7-col grid, Sun=col0 ... Sat=col6
-    const firstDow = new Date(year, month, 1).getDay(); // 0=Sun..6=Sat
-    for (let i = 0; i < firstDow; i++) cells.push(null);
+    const firstDow = new Date(year, month, 1).getDay();
+    // Overflow from prev month
+    for (let i = firstDow - 1; i >= 0; i--) {
+      cells.push({ overflow: true, day: daysInPrevMonth - i });
+    }
+    // Current month
     for (let d = 1; d <= daysInMonth; d++) {
       cells.push(`${year}-${pad(month + 1)}-${pad(d)}`);
+    }
+    // Overflow from next month to fill last row
+    const remainder = cells.length % 7;
+    if (remainder !== 0) {
+      for (let d = 1; d <= 7 - remainder; d++) {
+        cells.push({ overflow: true, day: d });
+      }
     }
   } else {
     // 5-col grid Mon-Fri, skip Sun(0) and Sat(6)
     const firstDow = new Date(year, month, 1).getDay();
     const offset = firstDow >= 1 && firstDow <= 5 ? firstDow - 1 : 0;
-    for (let i = 0; i < offset; i++) cells.push(null);
+    // Overflow from prev month (weekdays before the 1st)
+    for (let i = offset - 1; i >= 0; i--) {
+      cells.push({ overflow: true, day: daysInPrevMonth - i });
+    }
+    // Current month (weekdays only)
     for (let d = 1; d <= daysInMonth; d++) {
       const dow = new Date(year, month, d).getDay();
       if (dow === 0 || dow === 6) continue;
       cells.push(`${year}-${pad(month + 1)}-${pad(d)}`);
+    }
+    // Overflow from next month to fill last row (weekdays only)
+    const remainder = cells.length % 5;
+    if (remainder !== 0) {
+      let d = 1;
+      let added = 0;
+      const needed = 5 - remainder;
+      while (added < needed) {
+        const dow = new Date(year, month + 1, d).getDay();
+        if (dow !== 0 && dow !== 6) {
+          cells.push({ overflow: true, day: d });
+          added++;
+        }
+        d++;
+      }
     }
   }
 
@@ -78,8 +111,18 @@ export default function Calendar({
 
       {/* Date cells */}
       <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} gap-y-0.5`}>
-        {cells.map((date, i) => {
-          if (!date) return <div key={`null-${i}`} />;
+        {cells.map((cell, i) => {
+          if (typeof cell === "object" && cell.overflow) {
+            return (
+              <div
+                key={`overflow-${i}`}
+                className="flex items-center justify-center text-[11px] font-mono h-6 text-foreground opacity-20"
+              >
+                {cell.day}
+              </div>
+            );
+          }
+          const date = cell as string;
           const isActive = date === activeDate;
           const isToday = date === todayISO;
           const day = parseInt(date.split("-")[2], 10);

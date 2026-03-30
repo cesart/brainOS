@@ -66,9 +66,8 @@ const foldState = StateField.define<Set<number>>({
 // Heading helpers
 // ---------------------------------------------------------------------------
 function headingInfo(text: string): { level: number; prefix: string; content: string } | null {
-  const marker = "## ";
-  if (text.startsWith(marker)) {
-    return { level: 1, prefix: marker, content: text.slice(marker.length) };
+  if (text.startsWith("# ") && !text.startsWith("## ")) {
+    return { level: 1, prefix: "# ", content: text.slice(2) };
   }
   return null;
 }
@@ -123,12 +122,12 @@ function parseInlineSpans(text: string): InlineSpan[] {
         }
       }
     }
-    // **bold**
-    if (text.startsWith("**", i)) {
-      const end = text.indexOf("**", i + 2);
-      if (end !== -1) {
-        spans.push({ kind: 'styled', from: i, to: end + 2, openLen: 2, closeLen: 2, cls: "cm-md-bold" });
-        i = end + 2; continue;
+    // *bold*
+    if (text[i] === "*" && !text.startsWith("**", i)) {
+      const end = text.indexOf("*", i + 1);
+      if (end !== -1 && end > i + 1) {
+        spans.push({ kind: 'styled', from: i, to: end + 1, openLen: 1, closeLen: 1, cls: "cm-md-bold" });
+        i = end + 1; continue;
       }
     }
     // ~~strike~~
@@ -148,10 +147,9 @@ function parseInlineSpans(text: string): InlineSpan[] {
         i = end + 1; continue;
       }
     }
-    // _italic_ or *italic*
-    if ((text[i] === "_" || (text[i] === "*" && !text.startsWith("**", i)))) {
-      const ch = text[i];
-      const end = text.indexOf(ch, i + 1);
+    // _italic_
+    if (text[i] === "_") {
+      const end = text.indexOf("_", i + 1);
       if (end !== -1 && end > i + 1) {
         spans.push({ kind: 'styled', from: i, to: end + 1, openLen: 1, closeLen: 1, cls: "cm-md-italic" });
         i = end + 1; continue;
@@ -180,6 +178,16 @@ class FoldWidget extends WidgetType {
   constructor(readonly folded: boolean, readonly lineNum: number) { super(); }
   eq(other: FoldWidget) { return other.folded === this.folded && other.lineNum === this.lineNum; }
   toDOM(view: EditorView): HTMLElement {
+    const wrapper = document.createElement("span");
+    wrapper.style.cssText = "display:inline-flex;align-items:center;position:relative;";
+
+    // Zero-width heading-size anchor: forces the line box to heading height
+    // the moment the prefix is detected — before any content is typed.
+    const anchor = document.createElement("span");
+    anchor.style.cssText = "font-size:1.1em;line-height:inherit;width:0;overflow:hidden;";
+    anchor.textContent = "\u200B";
+    wrapper.appendChild(anchor);
+
     const btn = document.createElement("span");
     btn.className = "cm-fold-btn";
     btn.textContent = this.folded ? "▸ " : "▾ ";
@@ -187,7 +195,8 @@ class FoldWidget extends WidgetType {
       e.preventDefault();
       view.dispatch({ effects: toggleFold.of(this.lineNum) });
     });
-    return btn;
+    wrapper.appendChild(btn);
+    return wrapper;
   }
   ignoreEvent() { return true; }
 }
@@ -199,8 +208,8 @@ class CheckboxWidget extends WidgetType {
     const span = document.createElement("span");
     span.className = "cm-checkbox";
     span.innerHTML = this.checked
-      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;position:relative;top:-1px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg>`
-      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;position:relative;top:-1px"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:block;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg>`
+      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:block;"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
     span.addEventListener("mousedown", (e) => {
       e.preventDefault();
       const line = view.state.doc.lineAt(this.lineFrom);
@@ -296,6 +305,29 @@ const foldDecorations = StateField.define<DecorationSet>({
     const foldChanged = tr.effects.some((e) => e.is(toggleFold));
     if (!tr.docChanged && !foldChanged) return deco.map(tr.changes);
     return buildFoldDecorations(tr.state);
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+// StateField (not ViewPlugin) so CodeMirror uses it for line-height computation.
+// Applies cm-h1-line to heading lines so the line is already at heading height
+// before any content is typed — prevents the jump when the first char is added.
+function buildHeadingLineDecos(state: EditorState): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  for (let i = 1; i <= state.doc.lines; i++) {
+    const line = state.doc.line(i);
+    if (headingInfo(line.text)) {
+      builder.add(line.from, line.from, Decoration.line({ class: "cm-h1-line" }));
+    }
+  }
+  return builder.finish();
+}
+
+const headingLineDeco = StateField.define<DecorationSet>({
+  create: (state) => buildHeadingLineDecos(state),
+  update(deco, tr) {
+    if (!tr.docChanged) return deco.map(tr.changes);
+    return buildHeadingLineDecos(tr.state);
   },
   provide: (f) => EditorView.decorations.from(f),
 });
@@ -450,7 +482,7 @@ function buildDecorations(view: EditorView): DecorationSet {
       const prefixLen = olMatch[1].length + 1;
       const contentStart = line.from + prefixLen;
       builder.add(line.from, line.from, Decoration.line({ class: "cm-list-line" }));
-      builder.add(line.from, line.from + olMatch[1].length, Decoration.mark({ class: "cm-md-prefix" }));
+      builder.add(line.from, line.from + olMatch[1].length, Decoration.mark({ class: "cm-md-prefix cm-ol-num" }));
       if (contentStart < line.to) addInlineMarks(builder, contentStart, olMatch[2]);
       continue;
     }
@@ -532,7 +564,7 @@ const brainTheme = EditorView.theme({
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
   },
-  ".cm-line": { paddingLeft: "0.5rem" },
+  ".cm-line": { paddingLeft: "1.5rem" },
   "&.cm-focused .cm-cursor, &.cm-focused .cm-dropCursor": { display: "block", borderLeftStyle: "solid", borderLeftWidth: "2px", borderLeftColor: "var(--cm-cursor-color, var(--muted-foreground))" },
   ".cm-selectionBackground": { background: "oklch(1 0 0 / 0.08) !important" },
   "&.cm-focused .cm-selectionBackground": { background: "oklch(1 0 0 / 0.11) !important" },
@@ -540,8 +572,9 @@ const brainTheme = EditorView.theme({
   "&.cm-focused": { outline: "none" },
   ".cm-gutters": { display: "none" },
 
-  // Headings
-  ".cm-h1": { fontSize: "1.25em", fontWeight: "600", color: "var(--foreground)" },
+  // Headings — line decoration locks the line height before content is typed
+  ".cm-h1-line": { fontSize: "1.1em" },
+  ".cm-h1": { fontSize: "1.1em", fontWeight: "600", color: "var(--foreground)" },
 
   // Muted syntax prefix (shown on cursor line for headings, and for block prefixes)
   ".cm-md-prefix": { color: "var(--muted-foreground)", opacity: "0.4" },
@@ -561,6 +594,12 @@ const brainTheme = EditorView.theme({
     lineHeight: "1",
     paddingRight: "0.25em",
   },
+  // Heading lines are 1.1em — tighten the hang so the button doesn't clip
+  ".cm-h1-line .cm-fold-btn": {
+    left: "-1.35em",
+    marginRight: "-1.35em",
+    width: "1.35em",
+  },
   ".cm-fold-btn:hover": { opacity: "0.7" },
 
   // Checkbox
@@ -570,6 +609,7 @@ const brainTheme = EditorView.theme({
     marginRight: "0.4em",
     display: "inline-block",
     lineHeight: "1",
+    verticalAlign: "middle",
   },
   ".cm-task-done": { opacity: "0.4", textDecoration: "line-through" },
 
@@ -582,7 +622,7 @@ const brainTheme = EditorView.theme({
   },
 
   // Block types
-  ".cm-blockquote-line": { borderLeft: "3px solid var(--muted)", paddingLeft: "1em", marginLeft: "0.25em" },
+  ".cm-blockquote-line": { borderLeft: "3px solid var(--muted)", marginLeft: "1em", paddingLeft: "1em" },
   ".cm-md-blockquote": { fontFamily: "var(--font-mono)", color: "var(--muted-foreground)", letterSpacing: "0" },
   ".cm-md-event": { color: "var(--foreground)", opacity: "0.8" },
 
@@ -606,8 +646,9 @@ const brainTheme = EditorView.theme({
   ".cm-md-link": { color: "var(--primary)", textDecoration: "none", cursor: "pointer", fontFamily: "var(--font-mono)" },
   ".cm-md-link:hover": { textDecoration: "underline" },
   // Bullet
-  ".cm-list-line": { lineHeight: "1.25" },
-  ".cm-bullet": { color: "var(--muted)", fontSize: "1.5em" },
+
+  ".cm-bullet": { color: "var(--muted)", fontSize: "1.5em", lineHeight: "1", marginRight: "0.2em" },
+  ".cm-ol-num": { marginRight: "0.35em" },
 });
 
 // ---------------------------------------------------------------------------
@@ -684,6 +725,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           keymap.of([{ key: "Enter", run: enterHandler }, ...historyKeymap, ...defaultKeymap]),
           foldState,
           foldDecorations,
+          headingLineDeco,
           markdownPlugin,
           brainTheme,
           EditorView.lineWrapping,
@@ -829,7 +871,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     { label: "Task",    icon: <CheckSquare className="w-4 h-4" />, action: () => insertLinePrefix("[] ") },
     { label: "Event",   icon: <Calendar className="w-4 h-4" />,    action: () => insertLinePrefix("+ ") },
     { label: "Section", icon: <Heading className="w-4 h-4" />,     action: () => insertLinePrefix("## ") },
-    { label: "Bold",    icon: <Bold className="w-4 h-4" />,        action: () => wrapSelection("**", "**") },
+    { label: "Bold",    icon: <Bold className="w-4 h-4" />,        action: () => wrapSelection("*", "*") },
     { label: "Italic",  icon: <Italic className="w-4 h-4" />,      action: () => wrapSelection("_", "_") },
     { label: "Strike",  icon: <Strikethrough className="w-4 h-4" />, action: () => wrapSelection("~~", "~~") },
     { label: "Code",    icon: <CodeXml className="w-4 h-4" />,     action: () => wrapSelection("`", "`") },

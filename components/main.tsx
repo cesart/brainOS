@@ -279,12 +279,12 @@ export default function Main({
             <div className="overflow-hidden">
               <div className="flex items-center justify-between px-4 py-4 border-b border-border">
                 <div>
-                  <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
+                  <p className={`text-[11px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
                     {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
                   </p>
-                  <h1 className="text-[32px] font-bold leading-tight">{dateLabel}</h1>
+                  <h1 className="text-[24px] font-medium leading-tight">{dateLabel}</h1>
                 </div>
-                <span className="text-[12px] text-muted-foreground tabular-nums font-mono"><Clock /></span>
+                <span className="text-[11px] text-muted-foreground tabular-nums font-mono tracking-[0.15em]"><Clock /></span>
               </div>
             </div>
           </div>
@@ -296,29 +296,27 @@ export default function Main({
             onBlur={() => setEditorFocused(false)}
           >
             {/* Desktop toolbar — floats to the left, starting below the date header */}
-            <div className="hidden md:flex flex-col gap-2 pl-2 pr-4 flex-shrink-0 items-center" style={{ paddingTop: toolbarTop + 16 }}>
+            <div className="hidden md:flex flex-col gap-2 pl-2 pr-2 flex-shrink-0 items-center" style={{ paddingTop: toolbarTop + 6 }}>
               {([
-                { label: "Task",    icon: <CheckSquare className="w-4 h-4" />, action: () => editorRef.current?.insertLinePrefix("[] ") },
-                { label: "Event",   icon: <Calendar className="w-4 h-4" />,    action: () => editorRef.current?.insertLinePrefix("+ ") },
-                { label: "Section", icon: <Heading className="w-4 h-4" />,     action: () => editorRef.current?.insertLinePrefix("## ") },
-                { label: "Bold",    icon: <Bold className="w-4 h-4" />,        action: () => editorRef.current?.wrapSelection("**", "**") },
-                { label: "Italic",  icon: <Italic className="w-4 h-4" />,      action: () => editorRef.current?.wrapSelection("_", "_") },
-                { label: "Strike",  icon: <Strikethrough className="w-4 h-4" />, action: () => editorRef.current?.wrapSelection("~~", "~~") },
-                { label: "Code",    icon: <CodeXml className="w-4 h-4" />,     action: () => editorRef.current?.wrapSelection("`", "`") },
-                { label: "Link",    icon: <Link className="w-4 h-4" />,        action: () => editorRef.current?.wrapSelection("[", "](url)") },
-                { label: "Quote",   icon: <Quote className="w-4 h-4" />,       action: () => editorRef.current?.insertLinePrefix("> ") },
-                { label: "List",    icon: <List className="w-4 h-4" />,        action: () => editorRef.current?.insertLinePrefix("- ") },
-                { label: "Ordered", icon: <ListOrdered className="w-4 h-4" />, action: () => editorRef.current?.insertLinePrefix("1. ") },
-                { label: "Rule",    icon: <Minus className="w-4 h-4" />,       action: () => editorRef.current?.insertLine("---") },
+                { label: "Task",    icon: <CheckSquare className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.insertLinePrefix("[] ") },
+                { label: "Event",   icon: <Calendar className="w-4 h-4" strokeWidth={2.5} />,    action: () => editorRef.current?.insertLinePrefix("+ ") },
+                { label: "Section", icon: <Heading className="w-4 h-4" strokeWidth={2.5} />,     action: () => editorRef.current?.insertLinePrefix("## ") },
+                { label: "Bold",    icon: <Bold className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.wrapSelection("*", "*") },
+                { label: "Italic",  icon: <Italic className="w-4 h-4" strokeWidth={2.5} />,      action: () => editorRef.current?.wrapSelection("_", "_") },
+                { label: "Strike",  icon: <Strikethrough className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.wrapSelection("~~", "~~") },
+                { label: "Code",    icon: <CodeXml className="w-4 h-4" strokeWidth={2.5} />,     action: () => editorRef.current?.wrapSelection("`", "`") },
+                { label: "Link",    icon: <Link className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.wrapSelection("[", "](url)") },
+                { label: "Quote",   icon: <Quote className="w-4 h-4" strokeWidth={2.5} />,       action: () => editorRef.current?.insertLinePrefix("> ") },
+                { label: "List",    icon: <List className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.insertLinePrefix("- ") },
+                { label: "Ordered", icon: <ListOrdered className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.insertLinePrefix("1. ") },
+                { label: "Rule",    icon: <Minus className="w-4 h-4" strokeWidth={2.5} />,       action: () => editorRef.current?.insertLine("---") },
               ] as const).map((tool) => (
                 <Tooltip key={tool.label}>
-                  <TooltipTrigger>
-                    <button
-                      onClick={tool.action}
-                      className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
-                    >
-                      {tool.icon}
-                    </button>
+                  <TooltipTrigger
+                    onClick={tool.action}
+                    className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    {tool.icon}
                   </TooltipTrigger>
                   <TooltipContent side="right" className="text-xs">{tool.label}</TooltipContent>
                 </Tooltip>
@@ -330,12 +328,12 @@ export default function Main({
               <div className="hidden sm:flex flex-shrink-0">
                 <div ref={headerRef} className="flex items-center justify-between pl-2 pr-6 py-4 border-b border-border w-full">
                   <div>
-                    <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
+                    <p className={`text-[11px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
                       {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
                     </p>
-                    <h1 className="text-[32px] font-bold leading-tight">{dateLabel}</h1>
+                    <h1 className="text-[24px] font-medium leading-tight">{dateLabel}</h1>
                   </div>
-                  <span className="text-[12px] text-muted-foreground tabular-nums font-mono"><Clock /></span>
+                  <span className="text-[11px] text-muted-foreground tabular-nums font-mono tracking-[0.15em]"><Clock /></span>
                 </div>
               </div>
 

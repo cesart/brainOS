@@ -74,14 +74,14 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
   const completed = tasks.filter((t) => t.completed && t.completedDate === activeDate);
 
   return (
-    <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto py-2 pl-2 pr-0">
+    <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto py-1 pl-3 pr-0">
       {/* Overview header */}
       <div className="flex items-center gap-2 px-3 py-3 border-b border-border flex-shrink-0">
         <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
         <span className="text-sm font-medium text-foreground">Overview</span>
       </div>
 
-      <div className="flex flex-col gap-4 p-2">
+      <div className="flex flex-col gap-4 px-2 py-3">
         {/* Events */}
         {events.length > 0 && (
           <section>
