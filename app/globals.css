@@ -7,6 +7,7 @@
 @layer base {
   :root {
     --font-sans: 'Mona Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
     --background: oklch(1 0 0);
     --foreground: oklch(0.216 0.006 56.043);
     --card: oklch(1 0 0);
@@ -87,25 +88,14 @@
   button {
     line-height: 0;
   }
+
+  .font-mono, code, kbd, pre, samp {
+    font-weight: 300;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
-}
-
-/* ── Editor overlay prose styles ──────────────────────────────────────────── */
-.editor-prose {
-  font-size: 1rem;
-  line-height: 1.85;
-  color: var(--foreground);
-}
-
-/* All lines are <p> tags; no extra margin between them so overlay aligns
-   perfectly with the textarea's line height */
-.editor-prose p {
-  margin: 0;
-  min-height: 1.85em;
-  position: relative;
 }

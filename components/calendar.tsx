@@ -2,7 +2,7 @@
 
 const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-interface MonthCalendarProps {
+interface CalendarProps {
   year: number;
   month: number; // 0-indexed
   activeDate: string;
@@ -41,9 +41,9 @@ function generateCells(year: number, month: number, showWeekends: boolean): (str
   return cells;
 }
 
-export default function MonthCalendar({
+export default function Calendar({
   year, month, activeDate, todayISO, showWeekends, onSelectDate,
-}: MonthCalendarProps) {
+}: CalendarProps) {
   const cells = generateCells(year, month, showWeekends);
   const dayHeaders = showWeekends
     ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -88,7 +88,7 @@ export default function MonthCalendar({
               key={date}
               onClick={() => onSelectDate(date)}
               className={`
-                flex items-center justify-center text-[11px] h-6 w-full rounded transition-colors
+                flex items-center justify-center text-[11px] font-mono h-6 w-full rounded transition-colors
                 ${isActive
                   ? "bg-foreground text-background font-semibold"
                   : isToday

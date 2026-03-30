@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
 import LeftBar from "@/components/leftbar";
-import Editor from "@/components/editor";
+import Editor, { EditorHandle } from "@/components/editor";
 import RightBar from "@/components/rightbar";
 import MonthCalendar from "@/components/calendar";
 import { Clock } from "@/components/clock";
@@ -13,9 +14,12 @@ import {
   Brain, PanelLeft, PanelBottom, ClipboardList,
   Layers, NotebookPen, Calendar, CalendarCheck,
   Square, SquareCheck, SquareChevronRight,
-  UnfoldHorizontal, Sun, Moon, Monitor,
+  UnfoldHorizontal,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  CheckSquare, Heading, Bold, Italic, Strikethrough,
+  CodeXml, Link, Quote, List, ListOrdered, Minus,
 } from "lucide-react";
+import { Display } from "@/components/display";
 
 const COLLAPSE_WIDTH = 1280; // sidebar(256) + pl(16) + gap(16) + editor(960) + buffer = 1248, round up
 const MODE_COLORS: Record<number, string> = {
@@ -40,7 +44,7 @@ function daysDiff(dueDate: string, todayISO: string) {
   );
 }
 
-interface DailyViewProps {
+interface MainProps {
   initialDay: AirtableDay;
   todayISO: string;
   weekDates: string[];
@@ -49,9 +53,9 @@ interface DailyViewProps {
   collections: AirtableCollection[];
 }
 
-export default function DailyView({
+export default function Main({
   initialDay, todayISO, weekDates, weekDays, allItems, collections,
-}: DailyViewProps) {
+}: MainProps) {
 
   // ── Shared ──────────────────────────────────────────────────────────
   const [activeDate, setActiveDate] = useState(todayISO);
@@ -69,6 +73,16 @@ export default function DailyView({
   const [wideMode, setWideMode] = useState(false);
   const [topMenuOpen, setTopMenuOpen] = useState(false);
   const topMenuRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<EditorHandle>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [toolbarTop, setToolbarTop] = useState(0);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const ro = new ResizeObserver(() => setToolbarTop(headerRef.current?.offsetHeight ?? 0));
+    ro.observe(headerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   // ── Mobile ──────────────────────────────────────────────────────────
   const [navOpen, setNavOpen] = useState(false);
@@ -174,29 +188,7 @@ export default function DailyView({
   const isWeekAtToday = weekViewStart === todayISO;
   const rollingDates  = [0, 1, 2, 3, 4].map((i) => addDays(weekViewStart, i));
 
-  // Shared theme picker — used in desktop dropdown + mobile nav
-  const themeButtons = (
-    <div className="flex gap-1">
-      {([
-        { id: "auto",  Icon: Monitor, label: "Auto"  },
-        { id: "light", Icon: Sun,     label: "Light" },
-        { id: "dark",  Icon: Moon,    label: "Dark"  },
-      ] as const).map(({ id, Icon, label }) => (
-        <button
-          key={id}
-          onClick={() => setTheme(id)}
-          className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[10px] leading-normal transition-colors ${
-            theme === id
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
-          }`}
-        >
-          <Icon className="w-3.5 h-3.5" />
-          {label}
-        </button>
-      ))}
-    </div>
-  );
+  const themeButtons = <Display theme={theme} onSetTheme={setTheme} />;
 
   return (
     <div className="relative h-dvh overflow-hidden bg-background flex flex-col">
@@ -265,6 +257,8 @@ export default function DailyView({
             onHide={() => setLeftBarOpen(false)}
             wideMode={wideMode}
             onToggleWide={() => setWideMode((w) => !w)}
+            theme={theme}
+            onSetTheme={setTheme}
           />
         </div>
 
@@ -288,37 +282,70 @@ export default function DailyView({
                   <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
                     {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
                   </p>
-                  <h1 className="text-2xl font-bold leading-tight">{dateLabel}</h1>
+                  <h1 className="text-[32px] font-bold leading-tight">{dateLabel}</h1>
                 </div>
                 <span className="text-[12px] text-muted-foreground tabular-nums font-mono"><Clock /></span>
               </div>
             </div>
           </div>
 
-          {/* DESKTOP: Top bar */}
-          <div className="hidden sm:flex flex-shrink-0 justify-center">
-            <div className={`flex items-center justify-between pl-2 pr-6 py-4 border-b border-border w-full transition-all duration-300 ${wideMode ? "" : "max-w-[960px]"}`}>
-              <div>
-                <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
-                  {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
-                </p>
-                <h1 className="text-2xl font-bold leading-tight">{dateLabel}</h1>
-              </div>
-              <span className="text-[12px] text-muted-foreground tabular-nums font-mono"><Clock /></span>
-            </div>
-          </div>
-
-          {/* Editor + desktop right bar */}
+          {/* Editor + desktop right bar (toolbar + content share the same justify-center row) */}
           <div
             className="flex flex-col flex-1 min-h-0 overflow-hidden sm:flex-row sm:justify-center"
             onFocus={() => setEditorFocused(true)}
             onBlur={() => setEditorFocused(false)}
           >
-            <div className={`flex overflow-hidden flex-1 lg:flex-none transition-all duration-300 ${wideMode ? "lg:flex-1" : "lg:w-[960px]"}`}>
+            {/* Desktop toolbar — floats to the left, starting below the date header */}
+            <div className="hidden md:flex flex-col gap-2 pl-2 pr-4 flex-shrink-0 items-center" style={{ paddingTop: toolbarTop + 16 }}>
+              {([
+                { label: "Task",    icon: <CheckSquare className="w-4 h-4" />, action: () => editorRef.current?.insertLinePrefix("[] ") },
+                { label: "Event",   icon: <Calendar className="w-4 h-4" />,    action: () => editorRef.current?.insertLinePrefix("+ ") },
+                { label: "Section", icon: <Heading className="w-4 h-4" />,     action: () => editorRef.current?.insertLinePrefix("## ") },
+                { label: "Bold",    icon: <Bold className="w-4 h-4" />,        action: () => editorRef.current?.wrapSelection("**", "**") },
+                { label: "Italic",  icon: <Italic className="w-4 h-4" />,      action: () => editorRef.current?.wrapSelection("_", "_") },
+                { label: "Strike",  icon: <Strikethrough className="w-4 h-4" />, action: () => editorRef.current?.wrapSelection("~~", "~~") },
+                { label: "Code",    icon: <CodeXml className="w-4 h-4" />,     action: () => editorRef.current?.wrapSelection("`", "`") },
+                { label: "Link",    icon: <Link className="w-4 h-4" />,        action: () => editorRef.current?.wrapSelection("[", "](url)") },
+                { label: "Quote",   icon: <Quote className="w-4 h-4" />,       action: () => editorRef.current?.insertLinePrefix("> ") },
+                { label: "List",    icon: <List className="w-4 h-4" />,        action: () => editorRef.current?.insertLinePrefix("- ") },
+                { label: "Ordered", icon: <ListOrdered className="w-4 h-4" />, action: () => editorRef.current?.insertLinePrefix("1. ") },
+                { label: "Rule",    icon: <Minus className="w-4 h-4" />,       action: () => editorRef.current?.insertLine("---") },
+              ] as const).map((tool) => (
+                <Tooltip key={tool.label}>
+                  <TooltipTrigger>
+                    <button
+                      onClick={tool.action}
+                      className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
+                    >
+                      {tool.icon}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">{tool.label}</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+
+            <div className={`flex flex-col overflow-hidden flex-1 lg:flex-none transition-all duration-300 ${wideMode ? "lg:flex-1" : "lg:w-[960px]"}`}>
+              {/* DESKTOP: Top bar — inside the content column so it aligns with the editor */}
+              <div className="hidden sm:flex flex-shrink-0">
+                <div ref={headerRef} className="flex items-center justify-between pl-2 pr-6 py-4 border-b border-border w-full">
+                  <div>
+                    <p className={`text-[10px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
+                      {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
+                    </p>
+                    <h1 className="text-[32px] font-bold leading-tight">{dateLabel}</h1>
+                  </div>
+                  <span className="text-[12px] text-muted-foreground tabular-nums font-mono"><Clock /></span>
+                </div>
+              </div>
+
+              <div className={`flex overflow-hidden flex-1`}>
               <Editor
+                ref={editorRef}
                 dayId={currentDay.id}
                 initialBody={currentDay.body ?? ""}
                 events={dayEvents}
+                cursorColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
               />
               {/* lg+: rightbar always in flow */}
               <div className="hidden lg:flex flex-shrink-0">
@@ -328,9 +355,11 @@ export default function DailyView({
                   todayISO={todayISO}
                   activeDate={activeDate}
                   onToggleTask={toggleTask}
+                  activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
                 />
               </div>
             </div>
+          </div>
           </div>
         </div>
       </SidebarProvider>
@@ -344,6 +373,7 @@ export default function DailyView({
             todayISO={todayISO}
             activeDate={activeDate}
             onToggleTask={toggleTask}
+            activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
           />
         </div>
       </div>
@@ -459,10 +489,10 @@ export default function DailyView({
                       >Today</button>
                     )}
                     <button onClick={() => setCalMonth((c) => c.month === 0 ? { year: c.year - 1, month: 11 } : { ...c, month: c.month - 1 })} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
-                      <ChevronLeft className="w-3 h-3" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button onClick={() => setCalMonth((c) => c.month === 11 ? { year: c.year + 1, month: 0 } : { ...c, month: c.month + 1 })} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
-                      <ChevronRight className="w-3 h-3" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </>
                 ) : (
@@ -474,10 +504,10 @@ export default function DailyView({
                       >Today</button>
                     )}
                     <button onClick={() => setWeekViewStart((s) => addDays(s, -5))} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
-                      <ChevronUp className="w-3 h-3" />
+                      <ChevronUp className="w-4 h-4" />
                     </button>
                     <button onClick={() => setWeekViewStart((s) => addDays(s, 5))} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
-                      <ChevronDown className="w-3 h-3" />
+                      <ChevronDown className="w-4 h-4" />
                     </button>
                   </>
                 )}
@@ -540,7 +570,7 @@ export default function DailyView({
                   : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-accent-foreground flex-shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-muted-foreground flex-shrink-0" />
               <span className="flex-1 text-left">All</span>
               <span className="tabular-nums">{items.length}</span>
             </button>
@@ -570,7 +600,7 @@ export default function DailyView({
 
       {/* ── DESKTOP: Collapsed sidebar button — peekaboo on hover ──────── */}
       <div
-        className="group/leftbtn hidden sm:block fixed left-0 top-0 bottom-0 w-4 z-50 transition-opacity duration-200"
+        className="group/leftbtn hidden sm:block fixed left-0 top-0 bottom-0 w-10 z-50 transition-opacity duration-200"
         style={{
           opacity: leftBarOpen ? 0 : 1,
           pointerEvents: leftBarOpen ? "none" : "auto",

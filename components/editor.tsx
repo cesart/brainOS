@@ -1,155 +1,739 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
-import { Square, SquareCheck, Minus } from "lucide-react";
+import React, { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import {
+  CheckSquare, Calendar, Heading, Bold, Italic, Strikethrough,
+  CodeXml, Link, Quote, List, ListOrdered, Minus,
+} from "lucide-react";
 import { AirtableItem } from "@/lib/airtable";
+import {
+  EditorState,
+  StateField,
+  StateEffect,
+  RangeSetBuilder,
+} from "@codemirror/state";
+import {
+  EditorView,
+  ViewPlugin,
+  ViewUpdate,
+  Decoration,
+  DecorationSet,
+  WidgetType,
+  keymap,
+  drawSelection,
+} from "@codemirror/view";
+import { history, historyKeymap, defaultKeymap } from "@codemirror/commands";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+export interface EditorHandle {
+  wrapSelection: (open: string, close: string) => void;
+  insertLinePrefix: (prefix: string) => void;
+  insertLine: (content: string) => void;
+}
 
 interface EditorProps {
   dayId: string;
   initialBody: string;
   events: AirtableItem[];
   className?: string;
+  cursorColor?: string;
 }
 
-// ── Inline markdown parser ──────────────────────────────────────────────────
-function parseInline(text: string): React.ReactNode {
-  const out: React.ReactNode[] = [];
-  let i = 0, k = 0, buf = "";
+// ---------------------------------------------------------------------------
+// Fold state
+// ---------------------------------------------------------------------------
+const toggleFold = StateEffect.define<number>();
 
-  const flush = () => { if (buf) { out.push(<span key={k++}>{buf}</span>); buf = ""; } };
-
-  while (i < text.length) {
-    if (text.startsWith("https://", i) || text.startsWith("http://", i)) {
-      const m = text.slice(i).match(/^https?:\/\/[^\s)>\]"'`]*/);
-      if (m) {
-        flush();
-        out.push(<a key={k++} href={m[0]} className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">{m[0]}</a>);
-        i += m[0].length; continue;
+const foldState = StateField.define<Set<number>>({
+  create: () => new Set<number>(),
+  update(value, tr) {
+    let changed = false;
+    const next = new Set(value);
+    for (const effect of tr.effects) {
+      if (effect.is(toggleFold)) {
+        changed = true;
+        if (next.has(effect.value)) next.delete(effect.value);
+        else next.add(effect.value);
       }
     }
+    return changed ? next : value;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Heading helpers
+// ---------------------------------------------------------------------------
+function headingInfo(text: string): { level: number; prefix: string; content: string } | null {
+  const marker = "## ";
+  if (text.startsWith(marker)) {
+    return { level: 1, prefix: marker, content: text.slice(marker.length) };
+  }
+  return null;
+}
+
+function foldRange(
+  doc: EditorState["doc"],
+  headingLineNum: number,
+  level: number
+): { first: number; last: number } | null {
+  const totalLines = doc.lines;
+  if (headingLineNum >= totalLines) return null;
+  let last = totalLines;
+  for (let i = headingLineNum + 1; i <= totalLines; i++) {
+    const info = headingInfo(doc.line(i).text);
+    if (info && info.level <= level) { last = i - 1; break; }
+  }
+  if (last < headingLineNum + 1) return null;
+  return { first: headingLineNum + 1, last };
+}
+
+// ---------------------------------------------------------------------------
+// Inline span parser — returns structured spans with marker lengths
+// ---------------------------------------------------------------------------
+interface InlineSpan {
+  kind: 'styled' | 'url';
+  from: number;
+  to: number;
+  openLen: number;
+  closeLen: number;
+  cls: string;
+}
+
+function parseInlineSpans(text: string): InlineSpan[] {
+  const spans: InlineSpan[] = [];
+  const FILE_EXTS = new Set(["tsx","jsx","ts","js","mjs","cjs","py","go","rs","rb","java","cpp","c","h","css","scss","html","json","yaml","yml","md","sh","log","png","jpg","svg","pdf","zip","mp4","mp3"]);
+  let i = 0;
+
+  while (i < text.length) {
+    // https?:// URL
+    if (text.startsWith("http://", i) || text.startsWith("https://", i)) {
+      const m = text.slice(i).match(/^https?:\/\/[^\s)>\]"'`]*/);
+      if (m) { spans.push({ kind: 'url', from: i, to: i + m[0].length, openLen: 0, closeLen: 0, cls: "cm-md-link" }); i += m[0].length; continue; }
+    }
+    // Bare domain (cesart.me)
+    const atBoundary = i === 0 || /[\s(["'`]/.test(text[i - 1]);
+    if (atBoundary && /[a-zA-Z]/.test(text[i])) {
+      const m = text.slice(i).match(/^([a-zA-Z][a-zA-Z0-9-]*\.)+[a-zA-Z]{2,7}(\/[^\s)>\]"'`]*)?/);
+      if (m) {
+        const tld = m[0].split("/")[0].split(".").pop()!.toLowerCase();
+        if (/^[a-z]{2,7}$/.test(tld) && !FILE_EXTS.has(tld)) {
+          spans.push({ kind: 'url', from: i, to: i + m[0].length, openLen: 0, closeLen: 0, cls: "cm-md-link" }); i += m[0].length; continue;
+        }
+      }
+    }
+    // **bold**
     if (text.startsWith("**", i)) {
-      const e = text.indexOf("**", i + 2);
-      if (e !== -1) { flush(); out.push(<strong key={k++} className="font-semibold">{text.slice(i + 2, e)}</strong>); i = e + 2; continue; }
+      const end = text.indexOf("**", i + 2);
+      if (end !== -1) {
+        spans.push({ kind: 'styled', from: i, to: end + 2, openLen: 2, closeLen: 2, cls: "cm-md-bold" });
+        i = end + 2; continue;
+      }
     }
+    // ~~strike~~
     if (text.startsWith("~~", i)) {
-      const e = text.indexOf("~~", i + 2);
-      if (e !== -1) { flush(); out.push(<s key={k++} className="text-muted-foreground">{text.slice(i + 2, e)}</s>); i = e + 2; continue; }
+      const end = text.indexOf("~~", i + 2);
+      if (end !== -1) {
+        spans.push({ kind: 'styled', from: i, to: end + 2, openLen: 2, closeLen: 2, cls: "cm-md-strike" });
+        i = end + 2; continue;
+      }
     }
+    // `code` (skip ``` fences — handled at block level)
     if (text[i] === "`") {
-      const e = text.indexOf("`", i + 1);
-      if (e !== -1) { flush(); out.push(<code key={k++} className="font-mono text-[0.82em] bg-sidebar-accent px-1 py-px rounded">{text.slice(i + 1, e)}</code>); i = e + 1; continue; }
+      if (text.startsWith("```", i)) { i += 3; continue; }
+      const end = text.indexOf("`", i + 1);
+      if (end !== -1 && end > i + 1) {
+        spans.push({ kind: 'styled', from: i, to: end + 1, openLen: 1, closeLen: 1, cls: "cm-md-code" });
+        i = end + 1; continue;
+      }
     }
-    if (text[i] === "_") {
-      const e = text.indexOf("_", i + 1);
-      if (e !== -1 && e > i + 1) { flush(); out.push(<em key={k++}>{text.slice(i + 1, e)}</em>); i = e + 1; continue; }
+    // _italic_ or *italic*
+    if ((text[i] === "_" || (text[i] === "*" && !text.startsWith("**", i)))) {
+      const ch = text[i];
+      const end = text.indexOf(ch, i + 1);
+      if (end !== -1 && end > i + 1) {
+        spans.push({ kind: 'styled', from: i, to: end + 1, openLen: 1, closeLen: 1, cls: "cm-md-italic" });
+        i = end + 1; continue;
+      }
     }
-    if (text[i] === "[" && text[i + 1] !== "]" && text[i + 1] !== "x" && text[i + 1] !== "X") {
+    // [text](url)
+    if (text[i] === "[") {
       const cb = text.indexOf("]", i + 1);
       if (cb !== -1 && text[cb + 1] === "(") {
         const cp = text.indexOf(")", cb + 2);
         if (cp !== -1) {
-          flush();
-          out.push(<a key={k++} href={text.slice(cb + 2, cp)} className="text-primary underline underline-offset-2" target="_blank" rel="noopener noreferrer">{text.slice(i + 1, cb)}</a>);
+          spans.push({ kind: 'styled', from: i, to: cp + 1, openLen: 1, closeLen: cp + 1 - cb, cls: "cm-md-link" });
           i = cp + 1; continue;
         }
       }
     }
-    buf += text[i++];
+    i++;
   }
-  flush();
-  return out.length === 0 ? null : out.length === 1 ? out[0] : <>{out}</>;
+  return spans;
 }
 
-// ── Per-line renderer ───────────────────────────────────────────────────────
-function Line({ line }: { line: string }) {
-  if (!line.trim()) return <p>{"\u00a0"}</p>;
-  if (line.trim() === "---") return (
-    <p className="relative"><span className="invisible select-none">---</span>
-      <span className="absolute inset-x-0 top-1/2 -translate-y-px border-t border-border/60 pointer-events-none" />
-    </p>
-  );
-
-  const h1 = line.match(/^#\s+(.*)/);
-  const h2 = line.match(/^##\s+(.*)/);
-  const h3 = line.match(/^###\s+(.*)/);
-  const bq = line.match(/^>\s?(.*)/);
-  const task0 = line.match(/^\[\]\s(.*)/);
-  const taskX = line.match(/^\[[xX]\]\s(.*)/);
-  const ul = line.match(/^[-*]\s(.*)/);
-  const ol = line.match(/^(\d+)\.\s(.*)/);
-
-  // Invisible prefix preserves textarea alignment
-  function Pfx({ content }: { content: string }) {
-    return <span className="invisible select-none">{line.slice(0, line.length - content.length)}</span>;
+// ---------------------------------------------------------------------------
+// Widgets
+// ---------------------------------------------------------------------------
+class FoldWidget extends WidgetType {
+  constructor(readonly folded: boolean, readonly lineNum: number) { super(); }
+  eq(other: FoldWidget) { return other.folded === this.folded && other.lineNum === this.lineNum; }
+  toDOM(view: EditorView): HTMLElement {
+    const btn = document.createElement("span");
+    btn.className = "cm-fold-btn";
+    btn.textContent = this.folded ? "▸ " : "▾ ";
+    btn.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      view.dispatch({ effects: toggleFold.of(this.lineNum) });
+    });
+    return btn;
   }
-
-  const ico = "absolute left-0 top-[5px] w-[13px] h-[13px] text-muted-foreground";
-
-  if (h1) return (
-    <p className="relative font-bold border-b border-border/40 pb-px">
-      <Pfx content={h1[1]} />{parseInline(h1[1])}
-    </p>
-  );
-  if (h2) return (
-    <p className="relative font-semibold text-foreground/90">
-      <span className="absolute left-0 top-[3px] bottom-[3px] w-0.5 bg-primary/60 rounded-full" />
-      <Pfx content={h2[1]} />{parseInline(h2[1])}
-    </p>
-  );
-  if (h3) return (
-    <p className="font-medium text-muted-foreground">
-      <Pfx content={h3[1]} />{parseInline(h3[1])}
-    </p>
-  );
-  if (task0) return (
-    <p className="relative"><Pfx content={task0[1]} />
-      <Square className={ico} />{parseInline(task0[1])}
-    </p>
-  );
-  if (taskX) return (
-    <p className="relative opacity-40 line-through"><Pfx content={taskX[1]} />
-      <SquareCheck className={ico} />{parseInline(taskX[1])}
-    </p>
-  );
-  if (bq) return (
-    <p className="relative italic text-muted-foreground">
-      <span className="absolute left-0 inset-y-0 w-0.5 bg-muted-foreground/25 rounded-full" />
-      <Pfx content={bq[1]} />{parseInline(bq[1])}
-    </p>
-  );
-  if (ul) return (
-    <p className="relative"><Pfx content={ul[1]} />
-      <Minus className={ico} />{parseInline(ul[1])}
-    </p>
-  );
-  if (ol) return (
-    <p className="relative"><Pfx content={ol[2]} />
-      <span className="absolute left-0 top-0 text-muted-foreground/60 text-[0.8em]">{ol[1]}.</span>
-      {parseInline(ol[2])}
-    </p>
-  );
-
-  return <p>{parseInline(line)}</p>;
+  ignoreEvent() { return true; }
 }
 
-// ── Editor ──────────────────────────────────────────────────────────────────
-export default function Editor({ dayId, initialBody, events, className }: EditorProps) {
-  const [body, setBody] = useState(initialBody);
-  const [atBottom, setAtBottom] = useState(false);
-  const taRef = useRef<HTMLTextAreaElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef(body);
+class CheckboxWidget extends WidgetType {
+  constructor(readonly checked: boolean, readonly lineFrom: number) { super(); }
+  eq(other: CheckboxWidget) { return other.checked === this.checked; }
+  toDOM(view: EditorView): HTMLElement {
+    const span = document.createElement("span");
+    span.className = "cm-checkbox";
+    span.innerHTML = this.checked
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;position:relative;top:-1px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></svg>`
+      : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;position:relative;top:-1px"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`;
+    span.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      const line = view.state.doc.lineAt(this.lineFrom);
+      if (line.text.startsWith("[] ")) {
+        view.dispatch({ changes: { from: line.from, to: line.from + 3, insert: "[x] " } });
+      } else {
+        view.dispatch({ changes: { from: line.from, to: line.from + 4, insert: "[] " } });
+      }
+    });
+    return span;
+  }
+  ignoreEvent() { return false; }
+}
+
+class HrWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const div = document.createElement("div");
+    div.className = "cm-hr";
+    return div;
+  }
+  ignoreEvent() { return true; }
+}
+
+class BulletWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = "cm-bullet";
+    span.textContent = "• ";
+    return span;
+  }
+  ignoreEvent() { return true; }
+}
+
+class CodeFenceWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const div = document.createElement("div");
+    div.className = "cm-code-fence";
+    return div;
+  }
+  ignoreEvent() { return true; }
+}
+
+// ---------------------------------------------------------------------------
+// Fenced code block scanner
+// ---------------------------------------------------------------------------
+function findCodeBlocks(doc: EditorState["doc"]): Array<{ open: number; close: number }> {
+  const blocks: Array<{ open: number; close: number }> = [];
+  let openLine: number | null = null;
+  for (let i = 1; i <= doc.lines; i++) {
+    const text = doc.line(i).text;
+    if (text.startsWith("```")) {
+      if (openLine === null) openLine = i;
+      else { blocks.push({ open: openLine, close: i }); openLine = null; }
+    }
+  }
+  return blocks;
+}
+
+// ---------------------------------------------------------------------------
+// StateField: fold range decorations (spans line breaks → must be StateField)
+// ---------------------------------------------------------------------------
+function buildFoldDecorations(state: EditorState): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const folded = state.field(foldState);
+  const doc = state.doc;
+
+  const sortedLines: number[] = [];
+  folded.forEach((n) => sortedLines.push(n));
+  sortedLines.sort((a, b) => a - b);
+
+  let lastHideTo = -1;
+  for (const lineNum of sortedLines) {
+    if (lineNum > doc.lines) continue;
+    const line = doc.line(lineNum);
+    if (line.from <= lastHideTo) continue; // nested fold, already hidden
+    const info = headingInfo(line.text);
+    if (!info) continue;
+    const range = foldRange(doc, lineNum, info.level);
+    if (!range) continue;
+    const hideFrom = doc.line(range.first).from - 1;
+    const hideTo = doc.line(range.last).to;
+    if (hideFrom < hideTo) {
+      builder.add(hideFrom, hideTo, Decoration.replace({}));
+      lastHideTo = hideTo;
+    }
+  }
+  return builder.finish();
+}
+
+const foldDecorations = StateField.define<DecorationSet>({
+  create: (state) => buildFoldDecorations(state),
+  update(deco, tr) {
+    const foldChanged = tr.effects.some((e) => e.is(toggleFold));
+    if (!tr.docChanged && !foldChanged) return deco.map(tr.changes);
+    return buildFoldDecorations(tr.state);
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+// ---------------------------------------------------------------------------
+// Atomic prefix ranges — prevents cursor from landing before block widgets
+// ---------------------------------------------------------------------------
+function buildPrefixAtomicRanges(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const { doc } = view.state;
+  for (let i = 1; i <= doc.lines; i++) {
+    const line = doc.line(i);
+    const text = line.text;
+    const hInfo = headingInfo(text);
+    if (hInfo) {
+      builder.add(line.from, line.from + hInfo.prefix.length, Decoration.replace({}));
+      continue;
+    }
+    if (text.startsWith("[] ")) {
+      builder.add(line.from, line.from + 3, Decoration.replace({}));
+      continue;
+    }
+    if (text.startsWith("[x] ") || text.startsWith("[X] ")) {
+      builder.add(line.from, line.from + 4, Decoration.replace({}));
+      continue;
+    }
+    if (/^[-*] /.test(text)) {
+      builder.add(line.from, line.from + 2, Decoration.replace({}));
+      continue;
+    }
+  }
+  return builder.finish();
+}
+
+// ---------------------------------------------------------------------------
+// ViewPlugin: single-line decorations only
+// ---------------------------------------------------------------------------
+function buildDecorations(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const { doc } = view.state;
+  const folded = view.state.field(foldState);
+
+  // Pre-compute hidden lines (inside folds) so we skip them
+  const hiddenLines = new Set<number>();
+  folded.forEach((lineNum) => {
+    if (lineNum > doc.lines) return;
+    const info = headingInfo(doc.line(lineNum).text);
+    if (!info) return;
+    const range = foldRange(doc, lineNum, info.level);
+    if (range) {
+      for (let j = range.first; j <= range.last; j++) hiddenLines.add(j);
+    }
+  });
+
+  // Pre-scan for fenced code blocks
+  const codeBlockLines = new Map<number, 'fence-open' | 'fence-close' | 'content'>();
+  for (const { open, close } of findCodeBlocks(doc)) {
+    codeBlockLines.set(open, 'fence-open');
+    codeBlockLines.set(close, 'fence-close');
+    for (let j = open + 1; j < close; j++) codeBlockLines.set(j, 'content');
+  }
+
+  for (let i = 1; i <= doc.lines; i++) {
+    if (hiddenLines.has(i)) continue;
+
+    const line = doc.line(i);
+    const text = line.text;
+
+    // ── Fenced code block ─────────────────────────────────────────────────
+    const codeLineType = codeBlockLines.get(i);
+    if (codeLineType === 'fence-open' || codeLineType === 'fence-close') {
+      builder.add(line.from, line.from, Decoration.line({ class: "cm-code-fence-line" }));
+      if (line.to > line.from) builder.add(line.from, line.to, Decoration.replace({ widget: new CodeFenceWidget() }));
+      continue;
+    }
+    if (codeLineType === 'content') {
+      builder.add(line.from, line.from, Decoration.line({ class: "cm-code-block-line" }));
+      continue;
+    }
+
+    // ── Headings ──────────────────────────────────────────────────────────
+    const hInfo = headingInfo(text);
+    if (hInfo) {
+      const isFolded = folded.has(i);
+      const prefixEnd = line.from + hInfo.prefix.length;
+      builder.add(line.from, prefixEnd, Decoration.replace({ widget: new FoldWidget(isFolded, i) }));
+      if (prefixEnd < line.to) {
+        builder.add(prefixEnd, line.to, Decoration.mark({ class: `cm-h${hInfo.level}` }));
+      }
+      continue;
+    }
+
+    // ── Horizontal rule ───────────────────────────────────────────────────
+    if (text.trim() === "---") {
+      builder.add(line.from, line.to, Decoration.replace({ widget: new HrWidget() }));
+      continue;
+    }
+
+    // ── Tasks ─────────────────────────────────────────────────────────────
+    const isUnchecked = text.startsWith("[] ");
+    const isChecked = text.startsWith("[x] ") || text.startsWith("[X] ");
+    if (isUnchecked || isChecked) {
+      const prefixLen = isChecked ? 4 : 3;
+      const contentStart = line.from + prefixLen;
+      builder.add(line.from, contentStart, Decoration.replace({ widget: new CheckboxWidget(isChecked, line.from) }));
+      if (isChecked && contentStart < line.to) {
+        builder.add(contentStart, line.to, Decoration.mark({ class: "cm-task-done" }));
+      }
+      if (!isChecked && contentStart < line.to) {
+        addInlineMarks(builder, contentStart, text.slice(prefixLen));
+      }
+      continue;
+    }
+
+    // ── Event (+ text) ────────────────────────────────────────────────────
+    if (text.startsWith("+ ")) {
+      const contentStart = line.from + 2;
+      builder.add(line.from, contentStart, Decoration.mark({ class: "cm-md-prefix" }));
+      if (contentStart < line.to) {
+        builder.add(contentStart, line.to, Decoration.mark({ class: "cm-md-event" }));
+        addInlineMarks(builder, contentStart, text.slice(2));
+      }
+      continue;
+    }
+
+    // ── Blockquote (> text) ───────────────────────────────────────────────
+    if (text.startsWith("> ") || text === ">") {
+      const prefixLen = text.startsWith("> ") ? 2 : 1;
+      const contentStart = line.from + prefixLen;
+      builder.add(line.from, line.from, Decoration.line({ class: "cm-blockquote-line" }));
+      builder.add(line.from, contentStart, Decoration.replace({}));
+      if (contentStart < line.to) {
+        builder.add(contentStart, line.to, Decoration.mark({ class: "cm-md-blockquote" }));
+        addInlineMarks(builder, contentStart, text.slice(prefixLen));
+      }
+      continue;
+    }
+
+    // ── Unordered list (- / * text) ───────────────────────────────────────
+    const ulMatch = text.match(/^([-*]) (.*)/);
+    if (ulMatch) {
+      const contentStart = line.from + 2;
+      builder.add(line.from, line.from, Decoration.line({ class: "cm-list-line" }));
+      builder.add(line.from, contentStart, Decoration.replace({ widget: new BulletWidget() }));
+      if (contentStart < line.to) addInlineMarks(builder, contentStart, ulMatch[2]);
+      continue;
+    }
+
+    // ── Ordered list (1. text) ────────────────────────────────────────────
+    const olMatch = text.match(/^(\d+\.) (.*)/);
+    if (olMatch) {
+      const prefixLen = olMatch[1].length + 1;
+      const contentStart = line.from + prefixLen;
+      builder.add(line.from, line.from, Decoration.line({ class: "cm-list-line" }));
+      builder.add(line.from, line.from + olMatch[1].length, Decoration.mark({ class: "cm-md-prefix" }));
+      if (contentStart < line.to) addInlineMarks(builder, contentStart, olMatch[2]);
+      continue;
+    }
+
+    // ── Plain line — inline marks only ────────────────────────────────────
+    if (line.to > line.from) {
+      addInlineMarks(builder, line.from, text);
+    }
+  }
+
+  return builder.finish();
+}
+
+/**
+ * Adds inline formatting decorations for `content` starting at `contentStart`.
+ * Always hides markers and shows styled content (Slack-style WYSIWYG — no syntax reveal on cursor).
+ */
+function addInlineMarks(
+  builder: RangeSetBuilder<Decoration>,
+  contentStart: number,
+  content: string,
+) {
+  const spans = parseInlineSpans(content);
+  for (const span of spans) {
+    const absFrom = contentStart + span.from;
+    const absTo = contentStart + span.to;
+
+    if (span.kind === 'url') {
+      builder.add(absFrom, absTo, Decoration.mark({ class: span.cls }));
+      continue;
+    }
+
+    const contentFrom = absFrom + span.openLen;
+    const contentTo = absTo - span.closeLen;
+
+    // Always hide markers, style the content
+    if (absFrom < contentFrom) builder.add(absFrom, contentFrom, Decoration.replace({}));
+    if (contentFrom < contentTo) builder.add(contentFrom, contentTo, Decoration.mark({ class: span.cls }));
+    if (contentTo < absTo) builder.add(contentTo, absTo, Decoration.replace({}));
+  }
+}
+
+const markdownPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    atomics: DecorationSet;
+    constructor(view: EditorView) {
+      this.decorations = buildDecorations(view);
+      this.atomics = buildPrefixAtomicRanges(view);
+    }
+    update(update: ViewUpdate) {
+      if (
+        update.docChanged ||
+        update.selectionSet ||
+        update.viewportChanged ||
+        update.transactions.some((tr) => tr.effects.some((e) => e.is(toggleFold)))
+      ) {
+        this.decorations = buildDecorations(update.view);
+        if (update.docChanged) this.atomics = buildPrefixAtomicRanges(update.view);
+      }
+    }
+  },
+  {
+    decorations: (v) => v.decorations,
+    provide: (plugin) => EditorView.atomicRanges.of((view) => view.plugin(plugin)?.atomics ?? Decoration.none),
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Theme
+// ---------------------------------------------------------------------------
+const brainTheme = EditorView.theme({
+  "&": { height: "100%", outline: "none", biackground: "transparent" },
+  ".cm-scroller": { fontFamily: "inherit", lineHeight: "1.65", overflow: "auto", height: "100%" },
+  ".cm-content": {
+    padding: "1rem 1rem 1rem 0.5rem",
+    caretColor: "transparent",
+    color: "var(--foreground)",
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+  },
+  ".cm-line": { paddingLeft: "0.5rem" },
+  "&.cm-focused .cm-cursor, &.cm-focused .cm-dropCursor": { display: "block", borderLeftStyle: "solid", borderLeftWidth: "2px", borderLeftColor: "var(--cm-cursor-color, var(--muted-foreground))" },
+  ".cm-selectionBackground": { background: "oklch(1 0 0 / 0.08) !important" },
+  "&.cm-focused .cm-selectionBackground": { background: "oklch(1 0 0 / 0.11) !important" },
+  ".cm-content ::selection": { background: "transparent" },
+  "&.cm-focused": { outline: "none" },
+  ".cm-gutters": { display: "none" },
+
+  // Headings
+  ".cm-h1": { fontSize: "1.25em", fontWeight: "600", color: "var(--foreground)" },
+
+  // Muted syntax prefix (shown on cursor line for headings, and for block prefixes)
+  ".cm-md-prefix": { color: "var(--muted-foreground)", opacity: "0.4" },
+
+  // Fold toggle icon — hangs left so heading text aligns with body
+  ".cm-fold-btn": {
+    cursor: "pointer",
+    userSelect: "none",
+    fontSize: "0.85em",
+    opacity: "0.3",
+    display: "inline-block",
+    position: "relative",
+    left: "-1.4em",
+    marginRight: "-1.4em",
+    width: "1.4em",
+    textAlign: "right",
+    lineHeight: "1",
+    paddingRight: "0.25em",
+  },
+  ".cm-fold-btn:hover": { opacity: "0.7" },
+
+  // Checkbox
+  ".cm-checkbox": {
+    cursor: "pointer",
+    color: "var(--muted-foreground)",
+    marginRight: "0.4em",
+    display: "inline-block",
+    lineHeight: "1",
+  },
+  ".cm-task-done": { opacity: "0.4", textDecoration: "line-through" },
+
+  // Horizontal rule
+  ".cm-hr": {
+    display: "block",
+    height: "1.625em",
+    background: "linear-gradient(var(--border), var(--border)) no-repeat center / 100% 1px",
+    pointerEvents: "none",
+  },
+
+  // Block types
+  ".cm-blockquote-line": { borderLeft: "3px solid var(--muted)", paddingLeft: "1em", marginLeft: "0.25em" },
+  ".cm-md-blockquote": { fontFamily: "var(--font-mono)", color: "var(--muted-foreground)", letterSpacing: "0" },
+  ".cm-md-event": { color: "var(--foreground)", opacity: "0.8" },
+
+  // Fenced code blocks
+  ".cm-code-fence-line": { background: "color-mix(in oklch, var(--muted-foreground) 6%, transparent)" },
+  ".cm-code-fence": { display: "block", height: "1.625em" },
+  ".cm-code-block-line": { fontFamily: "var(--font-mono)", fontSize: "0.875em", background: "color-mix(in oklch, var(--muted-foreground) 6%, transparent)", paddingLeft: "1rem" },
+
+  // Inline formatting
+  ".cm-md-bold": { fontWeight: "600" },
+  ".cm-md-italic": { fontStyle: "italic" },
+  ".cm-md-strike": { textDecoration: "line-through", color: "var(--muted-foreground)" },
+  ".cm-md-code": {
+    fontFamily: "var(--font-mono)",
+    color: "var(--muted-foreground)",
+    background: "var(--card)",
+    padding: "0.1em 0.5em",
+    margin: "0 0.3em",
+    borderRadius: "3px",
+  },
+  ".cm-md-link": { color: "var(--primary)", textDecoration: "none", cursor: "pointer", fontFamily: "var(--font-mono)" },
+  ".cm-md-link:hover": { textDecoration: "underline" },
+  // Bullet
+  ".cm-list-line": { lineHeight: "1.25" },
+  ".cm-bullet": { color: "var(--muted)", fontSize: "1.5em" },
+});
+
+// ---------------------------------------------------------------------------
+// Enter key handler
+// ---------------------------------------------------------------------------
+function makeEnterHandler(): (view: EditorView) => boolean {
+  return (view) => {
+    const { head } = view.state.selection.main;
+    const line = view.state.doc.lineAt(head);
+    const textBefore = line.text.slice(0, head - line.from);
+
+    const taskMatch = textBefore.match(/^\[[xX ]?\] /);
+    const ulMatch = textBefore.match(/^[-*] /);
+    const olMatch = textBefore.match(/^(\d+)\. /);
+    const eventMatch = textBefore.match(/^\+ /);
+
+    let prefix = ""; let prefixLen = 0;
+    if (taskMatch)       { prefix = "[] ";                             prefixLen = taskMatch[0].length; }
+    else if (ulMatch)    { prefix = ulMatch[0];                        prefixLen = prefix.length; }
+    else if (eventMatch) { prefix = "+ ";                              prefixLen = 2; }
+    else if (olMatch)    { prefix = `${parseInt(olMatch[1]) + 1}. `;   prefixLen = olMatch[0].length; }
+    if (!prefix) return false;
+
+    const lineContent = line.text.slice(prefixLen).trim();
+    if (lineContent === "") {
+      view.dispatch({ changes: { from: line.from, to: line.from + prefixLen, insert: "" }, selection: { anchor: line.from } });
+      return true;
+    }
+    view.dispatch({ changes: { from: head, insert: "\n" + prefix }, selection: { anchor: head + 1 + prefix.length } });
+    return true;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Editor component
+// ---------------------------------------------------------------------------
+const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
+  { dayId, initialBody, events, className, cursorColor }: EditorProps,
+  ref
+) {
+  const editorDomRef = useRef<HTMLDivElement>(null);
+  const cmRef = useRef<EditorView | null>(null);
+  const bodyRef = useRef(initialBody);
   const savedRef = useRef(initialBody);
   const dayIdRef = useRef(dayId);
+  const [kbVisible, setKbVisible] = React.useState(false);
+  const [atBottom, setAtBottom] = React.useState(false);
+  const [focused, setFocused] = React.useState(false);
+  const [hasContent, setHasContent] = React.useState(initialBody.length > 0);
 
-  useEffect(() => { bodyRef.current = body; }, [body]);
-
+  // ── Update cursor color when mode changes ─────────────────────────────────
+  const cursorColorInitial = useRef(true);
   useEffect(() => {
-    setBody(initialBody);
-    savedRef.current = initialBody;
+    if (!editorDomRef.current) return;
+    if (cursorColor) {
+      editorDomRef.current.style.setProperty("--cm-cursor-color", cursorColor);
+    } else {
+      editorDomRef.current.style.removeProperty("--cm-cursor-color");
+    }
+    if (!cursorColorInitial.current) cmRef.current?.focus();
+    cursorColorInitial.current = false;
+  }, [cursorColor]);
+
+  // ── Mount CodeMirror ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!editorDomRef.current) return;
+    const enterHandler = makeEnterHandler();
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: initialBody,
+        extensions: [
+          history(),
+          drawSelection(),
+          keymap.of([{ key: "Enter", run: enterHandler }, ...historyKeymap, ...defaultKeymap]),
+          foldState,
+          foldDecorations,
+          markdownPlugin,
+          brainTheme,
+          EditorView.lineWrapping,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              const content = update.state.doc.toString();
+              bodyRef.current = content;
+              setHasContent(content.length > 0);
+            }
+          }),
+          EditorView.domEventHandlers({
+            focus() { setFocused(true); return false; },
+            blur() { setFocused(false); save(); return false; },
+            scroll(_e, view) {
+              const s = view.scrollDOM;
+              setAtBottom(s.scrollTop + s.clientHeight >= s.scrollHeight - 4);
+              return false;
+            },
+          }),
+        ],
+      }),
+      parent: editorDomRef.current,
+    });
+    cmRef.current = view;
+    return () => { view.destroy(); cmRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Sync on dayId / initialBody change ───────────────────────────────────
+  useEffect(() => {
     dayIdRef.current = dayId;
+    bodyRef.current = initialBody;
+    savedRef.current = initialBody;
+    const view = cmRef.current;
+    if (!view) return;
+    if (view.state.doc.toString() !== initialBody) {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: initialBody } });
+    }
   }, [dayId, initialBody]);
 
+  // ── iOS keyboard ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const check = () => setKbVisible(vv.height < window.innerHeight - 100);
+    vv.addEventListener("resize", check);
+    return () => vv.removeEventListener("resize", check);
+  }, []);
+
+  // ── Save ──────────────────────────────────────────────────────────────────
   async function save() {
     if (bodyRef.current === savedRef.current) return;
     savedRef.current = bodyRef.current;
@@ -157,114 +741,157 @@ export default function Editor({ dayId, initialBody, events, className }: Editor
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body: bodyRef.current }),
+      keepalive: true,
     });
   }
 
   useEffect(() => {
-    const onHide = () => { if (document.visibilityState === "hidden") save(); };
-    document.addEventListener("visibilitychange", onHide);
-    const id = setInterval(save, 5000);
-    return () => { document.removeEventListener("visibilitychange", onHide); clearInterval(id); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const onVisibility = () => { if (document.visibilityState === "hidden") save(); };
+    const onUnload = () => save();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("beforeunload", onUnload);
+    const interval = setInterval(save, 5000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("beforeunload", onUnload);
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key !== "Enter") return;
-    const el = taRef.current!;
-    const pos = el.selectionStart;
-    const lineStart = body.lastIndexOf("\n", pos - 1) + 1;
-    const lineEnd = body.indexOf("\n", pos);
-    const line = body.slice(lineStart, lineEnd === -1 ? body.length : lineEnd);
+  // ── Remote sync ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const view = cmRef.current;
+      if (!view || view.hasFocus) return;
+      const res = await fetch(`/api/days/${dayIdRef.current}`);
+      if (!res.ok) return;
+      const day = await res.json();
+      const remote = day.body ?? "";
+      if (remote !== savedRef.current && bodyRef.current === savedRef.current) {
+        savedRef.current = remote;
+        bodyRef.current = remote;
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: remote } });
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const m = line.match(/^(\[\]|[-*]|\d+\.) /) || line.match(/^\[[xX]\] /);
-    if (!m) return;
-
-    const prefix = line.startsWith("[]") ? "[] " : line.startsWith("[x]") || line.startsWith("[X]") ? "[] "
-      : line.match(/^\d+\./) ? `${parseInt(line) + 1}. `
-      : m[0];
-    const prefixLen = m[0].length;
-
-    if (line.slice(prefixLen).trim() === "") {
-      e.preventDefault();
-      const next = body.slice(0, lineStart) + body.slice(lineStart + prefixLen);
-      setBody(next);
-      requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = lineStart; el.focus(); });
-      return;
+  // ── Toolbar helpers ───────────────────────────────────────────────────────
+  function wrapSelection(open: string, close: string) {
+    const view = cmRef.current; if (!view) return;
+    const { from, to } = view.state.selection.main;
+    const selected = view.state.sliceDoc(from, to);
+    const before = from >= open.length ? view.state.sliceDoc(from - open.length, from) : "";
+    const after = view.state.sliceDoc(to, to + close.length);
+    if (before === open && after === close) {
+      view.dispatch({
+        changes: [{ from: from - open.length, to: from, insert: "" }, { from: to, to: to + close.length, insert: "" }],
+        selection: { anchor: from - open.length, head: to - open.length },
+      });
+    } else if (selected.startsWith(open) && selected.endsWith(close) && selected.length > open.length + close.length) {
+      const inner = selected.slice(open.length, selected.length - close.length);
+      view.dispatch({ changes: { from, to, insert: inner }, selection: { anchor: from, head: from + inner.length } });
+    } else {
+      view.dispatch({
+        changes: { from, to, insert: open + selected + close },
+        selection: { anchor: from + open.length, head: from + open.length + selected.length },
+      });
     }
-    e.preventDefault();
-    const next = body.slice(0, pos) + "\n" + prefix + body.slice(pos);
-    setBody(next);
-    requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = pos + 1 + prefix.length; el.focus(); });
+    view.focus();
   }
+
+  function insertLinePrefix(prefix: string) {
+    const view = cmRef.current; if (!view) return;
+    const { head } = view.state.selection.main;
+    const line = view.state.doc.lineAt(head);
+    if (line.text.startsWith(prefix)) {
+      view.dispatch({ changes: { from: line.from, to: line.from + prefix.length, insert: "" }, selection: { anchor: Math.max(line.from, head - prefix.length) } });
+    } else {
+      view.dispatch({ changes: { from: line.from, insert: prefix }, selection: { anchor: head + prefix.length } });
+    }
+    view.focus();
+  }
+
+  function insertLine(content: string) {
+    const view = cmRef.current; if (!view) return;
+    const { head } = view.state.selection.main;
+    const line = view.state.doc.lineAt(head);
+    view.dispatch({ changes: { from: line.to, insert: "\n" + content }, selection: { anchor: line.to + 1 + content.length } });
+    view.focus();
+  }
+
+  // ── Expose actions to parent ──────────────────────────────────────────────
+  useImperativeHandle(ref, () => ({ wrapSelection, insertLinePrefix, insertLine }));
+
+  // ── Tools ─────────────────────────────────────────────────────────────────
+  const tools = [
+    { label: "Task",    icon: <CheckSquare className="w-4 h-4" />, action: () => insertLinePrefix("[] ") },
+    { label: "Event",   icon: <Calendar className="w-4 h-4" />,    action: () => insertLinePrefix("+ ") },
+    { label: "Section", icon: <Heading className="w-4 h-4" />,     action: () => insertLinePrefix("## ") },
+    { label: "Bold",    icon: <Bold className="w-4 h-4" />,        action: () => wrapSelection("**", "**") },
+    { label: "Italic",  icon: <Italic className="w-4 h-4" />,      action: () => wrapSelection("_", "_") },
+    { label: "Strike",  icon: <Strikethrough className="w-4 h-4" />, action: () => wrapSelection("~~", "~~") },
+    { label: "Code",    icon: <CodeXml className="w-4 h-4" />,     action: () => wrapSelection("`", "`") },
+    { label: "Link",    icon: <Link className="w-4 h-4" />,        action: () => wrapSelection("[", "](url)") },
+    { label: "Quote",   icon: <Quote className="w-4 h-4" />,       action: () => insertLinePrefix("> ") },
+    { label: "List",    icon: <List className="w-4 h-4" />,        action: () => insertLinePrefix("- ") },
+    { label: "Ordered", icon: <ListOrdered className="w-4 h-4" />, action: () => insertLinePrefix("1. ") },
+    { label: "Rule",    icon: <Minus className="w-4 h-4" />,       action: () => insertLine("---") },
+  ];
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  const toolbarButtons = tools.map((tool) => (
+    <button
+      key={tool.label}
+      onClick={tool.action}
+      title={tool.label}
+      className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
+    >
+      {tool.icon}
+    </button>
+  ));
 
   return (
     <div className={`flex flex-col flex-1 overflow-hidden md:border-r md:border-border${className ? ` ${className}` : ""}`}>
-
-      {/* Writing area */}
-      <div className="relative flex-1 overflow-hidden cursor-text" onClick={() => taRef.current?.focus()}>
-
-        {/* Fade */}
-        <div className={`absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none z-10 transition-opacity duration-300 ${atBottom ? "opacity-0" : "opacity-100"}`} />
-
-        {/* Overlay */}
-        <div ref={overlayRef} className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="editor-prose px-10 py-8 max-w-[680px]">
-            {body
-              ? body.split("\n").map((line, i) => <Line key={i} line={line} />)
-              : <p className="text-muted-foreground/30 select-none">Start writing…</p>
-            }
-          </div>
+        <div className="relative flex-1 overflow-hidden cursor-text" onClick={() => cmRef.current?.focus()}>
+          <div className={`absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none z-10 transition-opacity duration-300 ${atBottom ? "opacity-0" : "opacity-100"}`} />
+          {!hasContent && (
+            <p
+              className="absolute pointer-events-none select-none text-base leading-relaxed transition-opacity duration-300"
+              style={{ top: "1rem", left: "1rem", color: "var(--muted-foreground)", opacity: focused ? 0 : 0.2 }}
+            >
+              Start brain dumping…
+            </p>
+          )}
+          <div ref={editorDomRef} className="absolute inset-0" />
         </div>
 
-        {/* Textarea */}
-        <textarea
-          ref={taRef}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          onBlur={save}
-          onKeyDown={handleKeyDown}
-          onClick={() => {
-            requestAnimationFrame(() => {
-              const el = taRef.current;
-              if (!el || el.selectionStart !== el.selectionEnd) return;
-              const pos = el.selectionStart;
-              const ls = body.lastIndexOf("\n", pos - 1) + 1;
-              const le = body.indexOf("\n", pos);
-              const line = body.slice(ls, le === -1 ? body.length : le);
-              const rel = pos - ls;
-              if (line.startsWith("[] ") && rel <= 2) setBody(body.slice(0, ls) + "[x] " + body.slice(ls + 3));
-              else if ((line.startsWith("[x] ") || line.startsWith("[X] ")) && rel <= 3) setBody(body.slice(0, ls) + "[] " + body.slice(ls + 4));
-            });
-          }}
-          onScroll={(e) => {
-            const el = e.target as HTMLTextAreaElement;
-            if (overlayRef.current) overlayRef.current.style.transform = `translateY(-${el.scrollTop}px)`;
-            setAtBottom(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
-          }}
-          style={{ color: "transparent", caretColor: "var(--foreground)", lineHeight: "1.85", fontSize: "1rem" }}
-          className="absolute inset-0 w-full h-full bg-transparent resize-none outline-none px-10 py-8"
-          spellCheck
-        />
-      </div>
-
-      {/* Events */}
-      {events.length > 0 && (
-        <div className="flex-shrink-0 px-10 pb-8">
-          <div className="h-px bg-border/50 mb-4 max-w-[600px]" />
-          <div className="flex flex-col gap-0.5 max-w-[600px]">
-            {events.map((ev) => (
-              <div key={ev.id} className="flex items-baseline justify-between py-1">
-                <span className="text-sm text-muted-foreground/40">{ev.name}</span>
-                {ev.dueDate && (
-                  <span className="text-xs text-muted-foreground/30 tabular-nums font-mono">
-                    {new Date(ev.dueDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </span>
-                )}
-              </div>
-            ))}
+        {events.length > 0 && (
+          <div className="flex-shrink-0 px-6 pb-6">
+            <p className="text-[10px] tracking-[1.5px] text-muted mb-2 uppercase">Upcoming Events</p>
+            <div className="h-px bg-sidebar-border mb-4" />
+            <div className="flex flex-col">
+              {events.map((event) => (
+                <div key={event.id} className="flex items-baseline justify-between py-1.5 px-3">
+                  <span className="text-xl font-semibold text-muted">{event.name}</span>
+                  {event.dueDate && (
+                    <span className="text-base text-muted">
+                      {new Date(event.dueDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
+        {/* Mobile toolbar */}
+        <div className={`md:hidden flex flex-row flex-nowrap overflow-x-auto items-center gap-2 px-2 flex-shrink-0 ${kbVisible ? "py-1" : "py-2"}`}>
+          {toolbarButtons}
+        </div>
     </div>
   );
-}
+});
+
+export default Editor;

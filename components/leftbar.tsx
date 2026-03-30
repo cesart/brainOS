@@ -5,8 +5,8 @@ import {
   Brain, PanelLeft, SquareChevronLeft, NotebookPen,
   Calendar, CalendarCheck, CalendarDays, CalendarRange, Layers, UnfoldHorizontal,
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  Sun, Moon, Monitor,
 } from "lucide-react";
+import { Display } from "@/components/display";
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +35,8 @@ interface LeftBarProps {
   onHide?: () => void;
   wideMode: boolean;
   onToggleWide: () => void;
+  theme: "auto" | "light" | "dark";
+  onSetTheme: (t: "auto" | "light" | "dark") => void;
 }
 
 function getWeekDayLabel(date: string): string {
@@ -54,30 +56,10 @@ function addDays(dateISO: string, n: number): string {
 export default function LeftBar({
   todayISO, weekDates: _weekDates, activeDate, onSelectDate,
   collections, activeModeId, onSelectMode, items,
-  onHide, wideMode, onToggleWide,
+  onHide, wideMode, onToggleWide, theme, onSetTheme,
 }: LeftBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [displayMode, setDisplayMode] = useState<"auto" | "light" | "dark">("dark");
-
-  // Load saved display mode on mount
-  useEffect(() => {
-    const saved = localStorage.getItem("displayMode") as "auto" | "light" | "dark" | null;
-    if (saved) setDisplayMode(saved);
-  }, []);
-
-  // Apply display mode to <html>
-  useEffect(() => {
-    localStorage.setItem("displayMode", displayMode);
-    const html = document.documentElement;
-    if (displayMode === "light") {
-      html.classList.remove("dark");
-    } else if (displayMode === "dark") {
-      html.classList.add("dark");
-    } else {
-      html.classList.toggle("dark", window.matchMedia("(prefers-color-scheme: dark)").matches);
-    }
-  }, [displayMode]);
 
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [agendaMenuOpen, setAgendaMenuOpen] = useState(false);
@@ -184,26 +166,7 @@ export default function LeftBar({
               <div className="h-px bg-sidebar-border mx-2 mt-1" />
               <div className="px-3 py-2">
                 <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
-                <div className="flex gap-1">
-                  {([
-                    { id: "auto",  Icon: Monitor, label: "Auto"  },
-                    { id: "light", Icon: Sun,     label: "Light" },
-                    { id: "dark",  Icon: Moon,    label: "Dark"  },
-                  ] as const).map(({ id, Icon, label }) => (
-                    <button
-                      key={id}
-                      onClick={() => setDisplayMode(id)}
-                      className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md text-[10px] transition-colors ${
-                        displayMode === id
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <Display theme={theme} onSetTheme={onSetTheme} />
               </div>
             </div>
           )}
@@ -354,7 +317,7 @@ export default function LeftBar({
                 onClick={() => onSelectMode(null)}
                 className={`gap-2 text-xs ${activeModeId === null ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : ""}`}
               >
-                <span className="w-2 h-2 rounded-full bg-accent-foreground flex-shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-muted-foreground flex-shrink-0" />
                 <span className="flex-1 font-medium">All</span>
                 <span className="tabular-nums text-xs text-muted-foreground">{items.length}</span>
               </SidebarMenuButton>

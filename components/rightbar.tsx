@@ -10,6 +10,7 @@ interface RightBarProps {
   todayISO: string;
   activeDate: string;
   onToggleTask: (id: string, completed: boolean) => void;
+  activeModeColor?: string;
 }
 
 function daysDiff(dueDate: string, todayISO: string): number {
@@ -65,7 +66,7 @@ function TaskRow({
   );
 }
 
-export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask }: RightBarProps) {
+export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor }: RightBarProps) {
   const pastDue   = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
@@ -73,7 +74,7 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
   const completed = tasks.filter((t) => t.completed && t.completedDate === activeDate);
 
   return (
-    <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto">
+    <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto py-2 pl-2 pr-0">
       {/* Overview header */}
       <div className="flex items-center gap-2 px-3 py-3 border-b border-border flex-shrink-0">
         <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
@@ -111,7 +112,7 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
         {tasks.length > 0 && (
           <section>
             <div className="flex items-center gap-1.5 px-1.5 pb-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" style={activeModeColor ? { background: activeModeColor } : {}} />
               <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
             </div>
             <LayoutGroup>
