@@ -8,6 +8,7 @@ import {
 import { AirtableItem } from "@/lib/airtable";
 import {
   EditorState,
+  EditorSelection,
   StateField,
   StateEffect,
   RangeSetBuilder,
@@ -109,6 +110,11 @@ function parseInlineSpans(text: string): InlineSpan[] {
     // https?:// URL
     if (text.startsWith("http://", i) || text.startsWith("https://", i)) {
       const m = text.slice(i).match(/^https?:\/\/[^\s)>\]"'`]*/);
+      if (m) { spans.push({ kind: 'url', from: i, to: i + m[0].length, openLen: 0, closeLen: 0, cls: "cm-md-link" }); i += m[0].length; continue; }
+    }
+    // Email address (must come before bare-domain to avoid matching domain part alone)
+    if ((i === 0 || /[\s(["'`]/.test(text[i - 1])) && /[a-zA-Z0-9._%+\-]/.test(text[i])) {
+      const m = text.slice(i).match(/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
       if (m) { spans.push({ kind: 'url', from: i, to: i + m[0].length, openLen: 0, closeLen: 0, cls: "cm-md-link" }); i += m[0].length; continue; }
     }
     // Bare domain (cesart.me)
@@ -243,13 +249,36 @@ class BulletWidget extends WidgetType {
   ignoreEvent() { return true; }
 }
 
-class CodeFenceWidget extends WidgetType {
-  toDOM(): HTMLElement {
-    const div = document.createElement("div");
-    div.className = "cm-code-fence";
-    return div;
+class CodeBlockWidget extends WidgetType {
+  constructor(readonly lines: string[]) { super(); }
+  toDOM(view: EditorView): HTMLElement {
+    const wrap = document.createElement("div");
+    wrap.className = "cm-code-block-wrap";
+
+    // Measure view.dom (.cm-editor) — constrained by its container, not by content width.
+    // Applying maxWidth to the wrap (not the pre) means CodeMirror sees a bounded widget,
+    // preventing cm-content from expanding and pushing regular text under the right panel.
+    const applyWidth = () => {
+      wrap.style.maxWidth = view.dom.clientWidth + "px";
+    };
+    applyWidth();
+    const ro = new ResizeObserver(applyWidth);
+    ro.observe(view.dom);
+    const origDestroy = this.destroy?.bind(this);
+    this.destroy = (dom: HTMLElement) => { ro.disconnect(); origDestroy?.(dom); };
+
+    const pre = document.createElement("pre");
+    pre.className = "cm-code-block-pre";
+    pre.textContent = this.lines.join("\n");
+
+    wrap.appendChild(pre);
+
+    return wrap;
   }
-  ignoreEvent() { return true; }
+  eq(other: CodeBlockWidget): boolean {
+    return other.lines.length === this.lines.length &&
+      other.lines.every((l, i) => l === this.lines[i]);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -267,6 +296,30 @@ function findCodeBlocks(doc: EditorState["doc"]): Array<{ open: number; close: n
   }
   return blocks;
 }
+
+// ---------------------------------------------------------------------------
+// StateField: code block decorations (single widget per fence block)
+// ---------------------------------------------------------------------------
+function buildCodeBlockDecos(state: EditorState): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const { open, close } of findCodeBlocks(state.doc)) {
+    const openLine = state.doc.line(open);
+    const closeLine = state.doc.line(close);
+    const lines: string[] = [];
+    for (let i = open + 1; i < close; i++) lines.push(state.doc.line(i).text);
+    builder.add(openLine.from, closeLine.to, Decoration.replace({
+      widget: new CodeBlockWidget(lines),
+      block: true,
+    }));
+  }
+  return builder.finish();
+}
+
+const codeBlockDeco = StateField.define<DecorationSet>({
+  create: (state) => buildCodeBlockDecos(state),
+  update: (value, tr) => tr.docChanged ? buildCodeBlockDecos(tr.state) : value.map(tr.changes),
+  provide: (f) => EditorView.decorations.from(f),
+});
 
 // ---------------------------------------------------------------------------
 // StateField: fold range decorations (spans line breaks → must be StateField)
@@ -383,30 +436,18 @@ function buildDecorations(view: EditorView): DecorationSet {
   });
 
   // Pre-scan for fenced code blocks
-  const codeBlockLines = new Map<number, 'fence-open' | 'fence-close' | 'content'>();
+  // Code block lines are handled entirely by codeBlockDeco StateField — skip them here
+  const codeBlockLines = new Set<number>();
   for (const { open, close } of findCodeBlocks(doc)) {
-    codeBlockLines.set(open, 'fence-open');
-    codeBlockLines.set(close, 'fence-close');
-    for (let j = open + 1; j < close; j++) codeBlockLines.set(j, 'content');
+    for (let j = open; j <= close; j++) codeBlockLines.add(j);
   }
 
   for (let i = 1; i <= doc.lines; i++) {
     if (hiddenLines.has(i)) continue;
+    if (codeBlockLines.has(i)) continue;
 
     const line = doc.line(i);
     const text = line.text;
-
-    // ── Fenced code block ─────────────────────────────────────────────────
-    const codeLineType = codeBlockLines.get(i);
-    if (codeLineType === 'fence-open' || codeLineType === 'fence-close') {
-      builder.add(line.from, line.from, Decoration.line({ class: "cm-code-fence-line" }));
-      if (line.to > line.from) builder.add(line.from, line.to, Decoration.replace({ widget: new CodeFenceWidget() }));
-      continue;
-    }
-    if (codeLineType === 'content') {
-      builder.add(line.from, line.from, Decoration.line({ class: "cm-code-block-line" }));
-      continue;
-    }
 
     // ── Headings ──────────────────────────────────────────────────────────
     const hInfo = headingInfo(text);
@@ -482,7 +523,7 @@ function buildDecorations(view: EditorView): DecorationSet {
       const prefixLen = olMatch[1].length + 1;
       const contentStart = line.from + prefixLen;
       builder.add(line.from, line.from, Decoration.line({ class: "cm-list-line" }));
-      builder.add(line.from, line.from + olMatch[1].length, Decoration.mark({ class: "cm-md-prefix cm-ol-num" }));
+      builder.add(line.from, line.from + olMatch[1].length, Decoration.mark({ class: "cm-ol-num" }));
       if (contentStart < line.to) addInlineMarks(builder, contentStart, olMatch[2]);
       continue;
     }
@@ -556,7 +597,7 @@ const markdownPlugin = ViewPlugin.fromClass(
 // ---------------------------------------------------------------------------
 const brainTheme = EditorView.theme({
   "&": { height: "100%", outline: "none", biackground: "transparent" },
-  ".cm-scroller": { fontFamily: "inherit", lineHeight: "1.65", overflow: "auto", height: "100%" },
+  ".cm-scroller": { fontFamily: "inherit", lineHeight: "1.65", overflowX: "hidden", overflowY: "auto", height: "100%" },
   ".cm-content": {
     padding: "1rem 1rem 1rem 0.5rem",
     caretColor: "transparent",
@@ -565,7 +606,7 @@ const brainTheme = EditorView.theme({
     wordBreak: "break-word",
   },
   ".cm-line": { paddingLeft: "1.5rem" },
-  "&.cm-focused .cm-cursor, &.cm-focused .cm-dropCursor": { display: "block", borderLeftStyle: "solid", borderLeftWidth: "2px", borderLeftColor: "var(--cm-cursor-color, var(--muted-foreground))" },
+  ".cm-cursor, .cm-dropCursor": { display: "block", borderLeftStyle: "solid", borderLeftWidth: "2px", borderLeftColor: "var(--cm-cursor-color, var(--muted-foreground))" },
   ".cm-selectionBackground": { background: "oklch(1 0 0 / 0.08) !important" },
   "&.cm-focused .cm-selectionBackground": { background: "oklch(1 0 0 / 0.11) !important" },
   ".cm-content ::selection": { background: "transparent" },
@@ -616,7 +657,7 @@ const brainTheme = EditorView.theme({
   // Horizontal rule
   ".cm-hr": {
     display: "block",
-    height: "1.625em",
+    height: "0.875em",
     background: "linear-gradient(var(--border), var(--border)) no-repeat center / 100% 1px",
     pointerEvents: "none",
   },
@@ -627,9 +668,10 @@ const brainTheme = EditorView.theme({
   ".cm-md-event": { color: "var(--foreground)", opacity: "0.8" },
 
   // Fenced code blocks
-  ".cm-code-fence-line": { background: "color-mix(in oklch, var(--muted-foreground) 6%, transparent)" },
-  ".cm-code-fence": { display: "block", height: "1.625em" },
-  ".cm-code-block-line": { fontFamily: "var(--font-mono)", fontSize: "0.875em", background: "color-mix(in oklch, var(--muted-foreground) 6%, transparent)", paddingLeft: "1rem" },
+  ".cm-code-block-wrap": { display: "block", width: "100%", marginTop: "0.25em", marginBottom: "1.5em", marginRight: "3rem", overflowX: "auto" },
+  ".cm-code-block-pre": { display: "block", margin: "0", padding: "2rem 1.5rem", fontFamily: "var(--font-mono)", fontSize: "0.875em", background: "color-mix(in oklch, var(--muted-foreground) 6%, transparent)", borderRadius: "16px", whiteSpace: "pre", wordBreak: "normal" },
+  ".cm-code-block-wrap::-webkit-scrollbar": { height: "3px" },
+  ".cm-code-block-wrap::-webkit-scrollbar-thumb": { background: "var(--muted)" },
 
   // Inline formatting
   ".cm-md-bold": { fontWeight: "600" },
@@ -643,12 +685,12 @@ const brainTheme = EditorView.theme({
     margin: "0 0.3em",
     borderRadius: "3px",
   },
-  ".cm-md-link": { color: "var(--primary)", textDecoration: "none", cursor: "pointer", fontFamily: "var(--font-mono)" },
+  ".cm-md-link": { color: "var(--primary)", textDecoration: "none", cursor: "pointer", fontFamily: "var(--font-mono)", padding: "0 0.125em" },
   ".cm-md-link:hover": { textDecoration: "underline" },
   // Bullet
 
-  ".cm-bullet": { color: "var(--muted)", fontSize: "1.5em", lineHeight: "1", marginRight: "0.2em" },
-  ".cm-ol-num": { marginRight: "0.35em" },
+  ".cm-bullet": { color: "color-mix(in oklch, var(--foreground) 50%, transparent)", fontSize: "1.5em", lineHeight: "1", marginRight: "0.2em" },
+  ".cm-ol-num": { color: "color-mix(in oklch, var(--foreground) 50%, transparent)", marginRight: "0.35em" },
 });
 
 // ---------------------------------------------------------------------------
@@ -719,6 +761,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     const view = new EditorView({
       state: EditorState.create({
         doc: initialBody,
+        selection: EditorSelection.cursor(initialBody.length),
         extensions: [
           history(),
           drawSelection(),
@@ -744,7 +787,44 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
               setAtBottom(s.scrollTop + s.clientHeight >= s.scrollHeight - 4);
               return false;
             },
+            click(event, view) {
+              const target = event.target as HTMLElement;
+              if (!target.classList.contains("cm-md-link")) return false;
+              const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+              if (pos === null) return false;
+              const line = view.state.doc.lineAt(pos);
+              const text = line.text;
+              const offset = pos - line.from;
+              // [text](url) or [text](url||target)
+              const mdLink = /\[([^\]]*)\]\(([^)]+)\)/g;
+              let m: RegExpExecArray | null;
+              while ((m = mdLink.exec(text)) !== null) {
+                if (m.index <= offset && offset < m.index + m[0].length) {
+                  const url = m[2].split("||")[0];
+                  window.open(url, "_blank", "noopener,noreferrer");
+                  return true;
+                }
+              }
+              // bare https?:// URL
+              const bareUrl = /https?:\/\/[^\s)>\]"'`]*/g;
+              while ((m = bareUrl.exec(text)) !== null) {
+                if (m.index <= offset && offset < m.index + m[0].length) {
+                  window.open(m[0], "_blank", "noopener,noreferrer");
+                  return true;
+                }
+              }
+              // bare email address
+              const bareEmail = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+              while ((m = bareEmail.exec(text)) !== null) {
+                if (m.index <= offset && offset < m.index + m[0].length) {
+                  window.open(`mailto:${m[0]}`, "_self");
+                  return true;
+                }
+              }
+              return false;
+            },
           }),
+          codeBlockDeco,
         ],
       }),
       parent: editorDomRef.current,

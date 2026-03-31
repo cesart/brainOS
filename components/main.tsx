@@ -9,7 +9,6 @@ import Editor, { EditorHandle } from "@/components/editor";
 import RightBar from "@/components/rightbar";
 import MonthCalendar from "@/components/calendar";
 import { Clock } from "@/components/clock";
-import { motion, LayoutGroup } from "framer-motion";
 import {
   Brain, PanelLeft, PanelBottom, ClipboardList,
   Layers, NotebookPen, Calendar, CalendarCheck,
@@ -337,7 +336,7 @@ export default function Main({
                 </div>
               </div>
 
-              <div className={`flex overflow-hidden flex-1`}>
+              <div className={`flex overflow-hidden flex-1 min-w-0`}>
               <Editor
                 ref={editorRef}
                 dayId={currentDay.id}
@@ -354,6 +353,7 @@ export default function Main({
                   activeDate={activeDate}
                   onToggleTask={toggleTask}
                   activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
+                  activeModeName={activeModeId ? (collections.find((c) => c.id === activeModeId)?.name) : undefined}
                 />
               </div>
             </div>
@@ -372,6 +372,7 @@ export default function Main({
             activeDate={activeDate}
             onToggleTask={toggleTask}
             activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
+            activeModeName={activeModeId ? (collections.find((c) => c.id === activeModeId)?.name) : undefined}
           />
         </div>
       </div>
@@ -427,27 +428,24 @@ export default function Main({
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                 <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
               </div>
-              <LayoutGroup>
-                <div className="flex flex-col gap-0.5">
-                  {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completedToday].map((t) => (
-                    <motion.div
-                      key={t.id} layout layoutId={t.id}
-                      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                      className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
-                      style={t.completed ? { opacity: 0.75 } : {}}
-                      onClick={() => toggleTask(t.id, !t.completed)}
-                    >
-                      {t.completed
-                        ? <SquareCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                        : <Square className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                      }
-                      <span className={`text-sm leading-snug ${t.completed ? "text-muted-foreground" : "text-foreground"}`}>
-                        {t.name}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              </LayoutGroup>
+              <div className="flex flex-col gap-0.5">
+                {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completedToday].map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
+                    style={t.completed ? { opacity: 0.75 } : {}}
+                    onClick={() => toggleTask(t.id, !t.completed)}
+                  >
+                    {t.completed
+                      ? <SquareCheck className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      : <Square className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    }
+                    <span className={`text-sm leading-snug ${t.completed ? "text-muted-foreground" : "text-foreground"}`}>
+                      {t.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
           {dayEvents.length === 0 && allTasks.length === 0 && (

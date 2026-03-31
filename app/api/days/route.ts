@@ -1,11 +1,17 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { getDays, getDayByDate, getOrCreateDayByDate } from "@/lib/airtable";
+import { isDemoRequest, makeDemoDay } from "@/lib/demo";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
+
+    if (isDemoRequest(request)) {
+      if (date) return NextResponse.json(makeDemoDay(date));
+      return NextResponse.json([]);
+    }
 
     if (date) {
       const day = await getDayByDate(date);
@@ -24,6 +30,7 @@ export async function POST(request: Request) {
   try {
     const { date } = await request.json();
     if (!date) return NextResponse.json({ error: "date is required" }, { status: 400 });
+    if (isDemoRequest(request)) return NextResponse.json(makeDemoDay(date), { status: 201 });
     const day = await getOrCreateDayByDate(date);
     return NextResponse.json(day, { status: 201 });
   } catch {

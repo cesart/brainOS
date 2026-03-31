@@ -1,7 +1,6 @@
 "use client";
 
-import { Calendar, ClipboardList, Square, SquareCheck } from "lucide-react";
-import { motion, LayoutGroup } from "framer-motion";
+import { Calendar, ClipboardList, Layers, Square, SquareCheck } from "lucide-react";
 import { AirtableItem } from "@/lib/airtable";
 
 interface RightBarProps {
@@ -11,6 +10,7 @@ interface RightBarProps {
   activeDate: string;
   onToggleTask: (id: string, completed: boolean) => void;
   activeModeColor?: string;
+  activeModeName?: string;
 }
 
 function daysDiff(dueDate: string, todayISO: string): number {
@@ -40,10 +40,7 @@ function TaskRow({
   })();
 
   return (
-    <motion.div
-      layout
-      layoutId={item.id}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+    <div
       className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer hover:bg-accent/30 transition-colors"
       style={item.completed ? { opacity: 0.75 } : {}}
       onClick={() => onToggle(item.id, !item.completed)}
@@ -62,11 +59,11 @@ function TaskRow({
           </span>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor }: RightBarProps) {
+export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor, activeModeName }: RightBarProps) {
   const pastDue   = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
@@ -115,20 +112,30 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
               <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" style={activeModeColor ? { background: activeModeColor } : {}} />
               <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
             </div>
-            <LayoutGroup>
-              <div className="flex flex-col gap-0.5">
-                {pastDue.map((t)   => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
-                {dueToday.map((t)  => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
-                {upcoming.map((t)  => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
-                {noDate.map((t)    => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
-                {completed.map((t) => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
-              </div>
-            </LayoutGroup>
+            <div className="flex flex-col gap-0.5">
+              {pastDue.map((t)   => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
+              {dueToday.map((t)  => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
+              {upcoming.map((t)  => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
+              {noDate.map((t)    => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
+              {completed.map((t) => <TaskRow key={t.id} item={t} todayISO={todayISO} onToggle={onToggleTask} />)}
+            </div>
           </section>
         )}
 
         {events.length === 0 && tasks.length === 0 && (
-          <p className="text-sm text-muted-foreground/50 text-center py-8">Nothing here yet.</p>
+          <div className="flex flex-col items-center gap-3 py-8">
+            <Layers className="w-14 h-14 text-muted" />
+            {activeModeName
+              ? <div className="flex items-center gap-1.5 text-sm text-muted font-medium">
+                  <span>No events or tasks for</span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={activeModeColor ? { background: activeModeColor } : {}} />
+                    <span>{activeModeName}&hellip;</span>
+                  </span>
+                </div>
+              : <p className="text-sm text-muted text-center">No events or tasks&hellip;</p>
+            }
+          </div>
         )}
       </div>
     </div>
