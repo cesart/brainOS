@@ -1,10 +1,6 @@
 "use client";
 
 import React, { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
-import {
-  CheckSquare, Calendar, Heading, Bold, Italic, Strikethrough,
-  CodeXml, Link, Quote, List, ListOrdered, Minus,
-} from "lucide-react";
 import { AirtableItem } from "@/lib/airtable";
 import {
   EditorState,
@@ -769,7 +765,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   const bodyRef = useRef(initialBody);
   const savedRef = useRef(initialBody);
   const dayIdRef = useRef(dayId);
-  const [kbVisible, setKbVisible] = React.useState(false);
   const [atBottom, setAtBottom] = React.useState(false);
   const [focused, setFocused] = React.useState(false);
   const [hasContent, setHasContent] = React.useState(initialBody.length > 0);
@@ -881,15 +876,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     }
   }, [dayId, initialBody]);
 
-  // ── iOS keyboard ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const check = () => setKbVisible(vv.height < window.innerHeight - 100);
-    vv.addEventListener("resize", check);
-    return () => vv.removeEventListener("resize", check);
-  }, []);
-
   // ── Save ──────────────────────────────────────────────────────────────────
   async function save() {
     if (bodyRef.current === savedRef.current) return;
@@ -982,33 +968,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   useImperativeHandle(ref, () => ({ wrapSelection, insertLinePrefix, insertLine }));
 
   // ── Tools ─────────────────────────────────────────────────────────────────
-  const tools = [
-    { label: "Task",    icon: <CheckSquare className="w-4 h-4" />, action: () => insertLinePrefix("[] ") },
-    { label: "Event",   icon: <Calendar className="w-4 h-4" />,    action: () => insertLinePrefix("+ ") },
-    { label: "Section", icon: <Heading className="w-4 h-4" />,     action: () => insertLinePrefix("## ") },
-    { label: "Bold",    icon: <Bold className="w-4 h-4" />,        action: () => wrapSelection("*", "*") },
-    { label: "Italic",  icon: <Italic className="w-4 h-4" />,      action: () => wrapSelection("_", "_") },
-    { label: "Strike",  icon: <Strikethrough className="w-4 h-4" />, action: () => wrapSelection("~~", "~~") },
-    { label: "Code",    icon: <CodeXml className="w-4 h-4" />,     action: () => wrapSelection("`", "`") },
-    { label: "Link",    icon: <Link className="w-4 h-4" />,        action: () => wrapSelection("[", "](url)") },
-    { label: "Quote",   icon: <Quote className="w-4 h-4" />,       action: () => insertLinePrefix("> ") },
-    { label: "List",    icon: <List className="w-4 h-4" />,        action: () => insertLinePrefix("- ") },
-    { label: "Ordered", icon: <ListOrdered className="w-4 h-4" />, action: () => insertLinePrefix("1. ") },
-    { label: "Rule",    icon: <Minus className="w-4 h-4" />,       action: () => insertLine("---") },
-  ];
-
   // ── Render ────────────────────────────────────────────────────────────────
-  const toolbarButtons = tools.map((tool) => (
-    <button
-      key={tool.label}
-      onClick={tool.action}
-      title={tool.label}
-      className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
-    >
-      {tool.icon}
-    </button>
-  ));
-
   return (
     <div className={`flex flex-col flex-1 overflow-hidden${className ? ` ${className}` : ""}`}>
         <div className="relative flex-1 overflow-hidden cursor-text" onClick={() => cmRef.current?.focus()}>
@@ -1043,10 +1003,6 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
           </div>
         )}
 
-        {/* Mobile toolbar */}
-        <div className={`md:hidden flex flex-row flex-nowrap overflow-x-auto items-center gap-2 px-2 flex-shrink-0 ${kbVisible ? "py-1" : "py-2"}`}>
-          {toolbarButtons}
-        </div>
     </div>
   );
 });
