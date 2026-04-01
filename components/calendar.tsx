@@ -15,55 +15,53 @@ function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-type Cell = string | { overflow: true; day: number };
+type Cell = { date: string; overflow: boolean };
 
 function generateCells(year: number, month: number, showWeekends: boolean): Cell[] {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const daysInPrevMonth = new Date(year, month, 0).getDate();
   const cells: Cell[] = [];
 
+  const prevYear  = month === 0 ? year - 1 : year;
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+  const nextYear  = month === 11 ? year + 1 : year;
+  const nextMonth = month === 11 ? 0 : month + 1;
+
   if (showWeekends) {
-    // 7-col grid, Sun=col0 ... Sat=col6
     const firstDow = new Date(year, month, 1).getDay();
-    // Overflow from prev month
     for (let i = firstDow - 1; i >= 0; i--) {
-      cells.push({ overflow: true, day: daysInPrevMonth - i });
+      const d = daysInPrevMonth - i;
+      cells.push({ date: `${prevYear}-${pad(prevMonth + 1)}-${pad(d)}`, overflow: true });
     }
-    // Current month
     for (let d = 1; d <= daysInMonth; d++) {
-      cells.push(`${year}-${pad(month + 1)}-${pad(d)}`);
+      cells.push({ date: `${year}-${pad(month + 1)}-${pad(d)}`, overflow: false });
     }
-    // Overflow from next month to fill last row
     const remainder = cells.length % 7;
     if (remainder !== 0) {
       for (let d = 1; d <= 7 - remainder; d++) {
-        cells.push({ overflow: true, day: d });
+        cells.push({ date: `${nextYear}-${pad(nextMonth + 1)}-${pad(d)}`, overflow: true });
       }
     }
   } else {
-    // 5-col grid Mon-Fri, skip Sun(0) and Sat(6)
     const firstDow = new Date(year, month, 1).getDay();
     const offset = firstDow >= 1 && firstDow <= 5 ? firstDow - 1 : 0;
-    // Overflow from prev month (weekdays before the 1st)
     for (let i = offset - 1; i >= 0; i--) {
-      cells.push({ overflow: true, day: daysInPrevMonth - i });
+      const d = daysInPrevMonth - i;
+      cells.push({ date: `${prevYear}-${pad(prevMonth + 1)}-${pad(d)}`, overflow: true });
     }
-    // Current month (weekdays only)
     for (let d = 1; d <= daysInMonth; d++) {
       const dow = new Date(year, month, d).getDay();
       if (dow === 0 || dow === 6) continue;
-      cells.push(`${year}-${pad(month + 1)}-${pad(d)}`);
+      cells.push({ date: `${year}-${pad(month + 1)}-${pad(d)}`, overflow: false });
     }
-    // Overflow from next month to fill last row (weekdays only)
     const remainder = cells.length % 5;
     if (remainder !== 0) {
-      let d = 1;
-      let added = 0;
+      let d = 1; let added = 0;
       const needed = 5 - remainder;
       while (added < needed) {
-        const dow = new Date(year, month + 1, d).getDay();
+        const dow = new Date(nextYear, nextMonth, d).getDay();
         if (dow !== 0 && dow !== 6) {
-          cells.push({ overflow: true, day: d });
+          cells.push({ date: `${nextYear}-${pad(nextMonth + 1)}-${pad(d)}`, overflow: true });
           added++;
         }
         d++;
@@ -87,7 +85,6 @@ export default function Calendar({
 
   return (
     <div className="px-1 py-1">
-      {/* Animated month/year label — only visible when navigated away */}
       <div
         style={{
           maxHeight: isCurrentMonth ? "0" : "2rem",
@@ -100,7 +97,6 @@ export default function Calendar({
         </p>
       </div>
 
-      {/* Day-of-week headers */}
       <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} mb-1`}>
         {dayHeaders.map((h) => (
           <div key={h} className="text-center text-[9px] text-muted-foreground font-medium py-0.5">
@@ -109,34 +105,26 @@ export default function Calendar({
         ))}
       </div>
 
-      {/* Date cells */}
       <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} gap-y-0.5`}>
-        {cells.map((cell, i) => {
-          if (typeof cell === "object" && cell.overflow) {
-            return (
-              <div
-                key={`overflow-${i}`}
-                className="flex items-center justify-center text-[11px] font-mono h-6 text-foreground opacity-20"
-              >
-                {cell.day}
-              </div>
-            );
-          }
-          const date = cell as string;
+        {cells.map(({ date, overflow }, i) => {
           const isActive = date === activeDate;
-          const isToday = date === todayISO;
+          const isToday  = date === todayISO;
           const day = parseInt(date.split("-")[2], 10);
           return (
             <button
-              key={date}
+              key={`${date}-${i}`}
               onClick={() => onSelectDate(date)}
               className={`
                 flex items-center justify-center text-[11px] font-mono h-6 w-full rounded transition-colors
-                ${isActive
-                  ? "bg-foreground text-background font-semibold"
-                  : isToday
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-foreground hover:bg-sidebar-accent/60"
+                ${overflow
+                  ? isActive
+                    ? "bg-foreground text-background font-semibold opacity-50"
+                    : "text-foreground opacity-20 hover:opacity-50 hover:bg-sidebar-accent/60"
+                  : isActive
+                    ? "bg-foreground text-background font-semibold"
+                    : isToday
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-foreground hover:bg-sidebar-accent/60"
                 }
               `}
             >

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
-  Brain, PanelLeft, SquareChevronLeft, NotebookPen,
+  Brain, PanelLeft, SquareChevronLeft, SquareChevronRight, NotebookPen,
   Calendar, CalendarCheck, CalendarDays, CalendarRange, Layers, UnfoldHorizontal,
   ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
 } from "lucide-react";
@@ -37,6 +38,9 @@ interface LeftBarProps {
   onToggleWide: () => void;
   theme: "auto" | "light" | "dark";
   onSetTheme: (t: "auto" | "light" | "dark") => void;
+  peekaboo?: boolean;
+  onMenuOpenChange?: (open: boolean) => void;
+  activeModeColor?: string;
 }
 
 function getWeekDayLabel(date: string): string {
@@ -56,10 +60,15 @@ function addDays(dateISO: string, n: number): string {
 export default function LeftBar({
   todayISO, weekDates: _weekDates, activeDate, onSelectDate,
   collections, activeModeId, onSelectMode, items,
-  onHide, wideMode, onToggleWide, theme, onSetTheme,
+  onHide, wideMode, onToggleWide, theme, onSetTheme, peekaboo, onMenuOpenChange, activeModeColor,
 }: LeftBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Notify parent when menu open state changes so it can pin peekaboo sidebar
+  useEffect(() => { onMenuOpenChange?.(menuOpen); }, [menuOpen, onMenuOpenChange]);
+  const menuTriggerRef = useRef<HTMLDivElement>(null);
+  const menuDropdownRef = useRef<HTMLDivElement>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
 
   const [agendaView, setAgendaView] = useState<"month" | "week">("month");
   const [agendaMenuOpen, setAgendaMenuOpen] = useState(false);
@@ -78,17 +87,25 @@ export default function LeftBar({
     setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
   }, [activeDate]);
 
-  // Close panel menu on outside click
+  // Close panel menu on outside click (checks both trigger and portal dropdown)
   useEffect(() => {
     if (!menuOpen) return;
     function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
+      const inTrigger = menuTriggerRef.current?.contains(e.target as Node);
+      const inDropdown = menuDropdownRef.current?.contains(e.target as Node);
+      if (!inTrigger && !inDropdown) setMenuOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
+
+  function openMenu() {
+    if (menuTriggerRef.current) {
+      const r = menuTriggerRef.current.getBoundingClientRect();
+      setMenuAnchor({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    }
+    setMenuOpen((o) => !o);
+  }
 
   // Close agenda menu on outside click
   useEffect(() => {
@@ -127,50 +144,58 @@ export default function LeftBar({
   }
 
   return (
-    <Sidebar collapsible="none" className="rounded-2xl h-full w-64 flex-shrink-0 p-2">
+    <Sidebar collapsible="none" className={`rounded-2xl h-full w-64 flex-shrink-0 p-2${peekaboo ? " !bg-transparent" : ""}`}>
       {/* Header */}
       <SidebarHeader className="flex flex-row items-center justify-between px-2 py-2">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center flex-shrink-0">
-            <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
+            <Brain className="w-4 h-4 text-sidebar-accent-foreground transition-colors" style={activeModeColor ? { color: activeModeColor } : {}} />
           </div>
           <span className="text-base font-semibold font-mono text-sidebar-foreground">brainOS</span>
         </div>
-        {/* Panel icon dropdown */}
-        <div className="relative" ref={menuRef}>
+        {/* Panel icon — dropdown portaled to body so backdrop-blur works in all states */}
+        <div className="relative" ref={menuTriggerRef}>
           <button
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={openMenu}
             className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
-          {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
-              <button
-                onClick={() => { onHide?.(); setMenuOpen(false); }}
-                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
-              >
-                <SquareChevronLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                Hide sidebar
-              </button>
-              <button
-                onClick={() => { onToggleWide(); }}
-                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
-              >
-                <UnfoldHorizontal className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="flex-1 text-left">Full width</span>
-                <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${wideMode ? "bg-primary" : "bg-sidebar-border"}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${wideMode ? "left-[14px]" : "left-0.5"}`} />
-                </div>
-              </button>
-              <div className="h-px bg-sidebar-border mx-2 mt-1" />
-              <div className="px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
-                <Display theme={theme} onSetTheme={onSetTheme} />
-              </div>
-            </div>
-          )}
         </div>
+        {menuOpen && menuAnchor && typeof window !== "undefined" && createPortal(
+          <div
+            ref={menuDropdownRef}
+            className="fixed w-48 bg-sidebar/75 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-[200] py-1 overflow-hidden"
+            style={{ top: menuAnchor.top, right: menuAnchor.right }}
+          >
+            <button
+              onClick={() => { onHide?.(); setMenuOpen(false); }}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
+            >
+              {peekaboo
+                ? <SquareChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                : <SquareChevronLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              }
+              {peekaboo ? "Show sidebar" : "Hide sidebar"}
+            </button>
+            <button
+              onClick={() => { onToggleWide(); }}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
+            >
+              <UnfoldHorizontal className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <span className="flex-1 text-left">Full width</span>
+              <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${wideMode ? "bg-primary" : "bg-sidebar-border"}`}>
+                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${wideMode ? "left-[14px]" : "left-0.5"}`} />
+              </div>
+            </button>
+            <div className="h-px bg-sidebar-border mx-2 mt-1" />
+            <div className="px-3 py-2">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
+              <Display theme={theme} onSetTheme={onSetTheme} />
+            </div>
+          </div>,
+          document.body
+        )}
       </SidebarHeader>
 
       <SidebarContent className="gap-0">
@@ -189,7 +214,7 @@ export default function LeftBar({
                   <ChevronDown className="w-3 h-3 text-muted-foreground" />
                 </button>
                 {agendaMenuOpen && (
-                  <div className="absolute left-0 top-full mt-1 w-44 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
+                  <div className="absolute left-0 top-full mt-1 w-44 bg-sidebar/75 backdrop-blur-xl border border-sidebar-border rounded-2xl shadow-lg z-50 py-1 overflow-hidden">
                     <button
                       onClick={() => { setAgendaView("month"); setAgendaMenuOpen(false); }}
                       className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs transition-colors ${agendaView === "month" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"} hover:bg-sidebar-accent`}

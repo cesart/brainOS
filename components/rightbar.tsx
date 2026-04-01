@@ -11,6 +11,7 @@ interface RightBarProps {
   onToggleTask: (id: string, completed: boolean) => void;
   activeModeColor?: string;
   activeModeName?: string;
+  peekaboo?: boolean;
 }
 
 function daysDiff(dueDate: string, todayISO: string): number {
@@ -63,19 +64,23 @@ function TaskRow({
   );
 }
 
-export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor, activeModeName }: RightBarProps) {
+export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor, activeModeName, peekaboo }: RightBarProps) {
   const pastDue   = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
   const noDate    = tasks.filter((t) => !t.completed && !t.dueDate);
   const completed = tasks.filter((t) => t.completed && t.completedDate === activeDate);
+  const visibleTaskCount = pastDue.length + dueToday.length + upcoming.length + noDate.length + completed.length;
 
   return (
-    <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto py-1 pl-3 pr-0">
+    <div className="flex flex-col w-80 flex-shrink-0 overflow-y-auto py-0 pl-3 pr-0 border-l border-sidebar-border">
       {/* Overview header */}
-      <div className="flex items-center gap-2 px-3 py-3 border-b border-border flex-shrink-0">
-        <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-sm font-medium text-foreground">Overview</span>
+      <div className="flex-shrink-0">
+        <div className="flex items-center gap-2 pl-3 pr-0 py-3">
+          <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Overview</span>
+        </div>
+        <div className={`h-px bg-sidebar-border ${peekaboo ? "mr-1" : ""}`} />
       </div>
 
       <div className="flex flex-col gap-4 px-2 py-3">
@@ -83,7 +88,6 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
         {events.length > 0 && (
           <section>
             <div className="flex items-center gap-1.5 px-1.5 pb-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
               <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Events</p>
             </div>
             <div className="flex flex-col gap-0.5">
@@ -106,7 +110,7 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
         )}
 
         {/* Tasks */}
-        {tasks.length > 0 && (
+        {visibleTaskCount > 0 && (
           <section>
             <div className="flex items-center gap-1.5 px-1.5 pb-2">
               <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" style={activeModeColor ? { background: activeModeColor } : {}} />
@@ -122,7 +126,7 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
           </section>
         )}
 
-        {events.length === 0 && tasks.length === 0 && (
+        {events.length === 0 && visibleTaskCount === 0 && (
           <div className="flex flex-col items-center gap-3 py-8">
             <Layers className="w-14 h-14 text-muted" />
             {activeModeName

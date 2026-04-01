@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AirtableDay, AirtableItem, AirtableCollection } from "@/lib/airtable";
@@ -10,10 +10,9 @@ import RightBar from "@/components/rightbar";
 import MonthCalendar from "@/components/calendar";
 import { Clock } from "@/components/clock";
 import {
-  Brain, PanelLeft, PanelBottom, ClipboardList,
+  Brain, PanelBottom, ClipboardList,
   Layers, NotebookPen, Calendar, CalendarCheck,
-  Square, SquareCheck, SquareChevronRight,
-  UnfoldHorizontal,
+  Square, SquareCheck,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   CheckSquare, Heading, Bold, Italic, Strikethrough,
   CodeXml, Link, Quote, List, ListOrdered, Minus,
@@ -70,18 +69,10 @@ export default function Main({
   // ── Desktop ─────────────────────────────────────────────────────────
   const [leftBarOpen, setLeftBarOpen] = useState(true);
   const [wideMode, setWideMode] = useState(false);
-  const [topMenuOpen, setTopMenuOpen] = useState(false);
-  const topMenuRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [peekabooHovered, setPeekabooHovered] = useState(false);
+  const [peekabooMenuOpen, setPeekabooMenuOpen] = useState(false);
   const editorRef = useRef<EditorHandle>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const [toolbarTop, setToolbarTop] = useState(0);
-
-  useEffect(() => {
-    if (!headerRef.current) return;
-    const ro = new ResizeObserver(() => setToolbarTop(headerRef.current?.offsetHeight ?? 0));
-    ro.observe(headerRef.current);
-    return () => ro.disconnect();
-  }, []);
 
   // ── Mobile ──────────────────────────────────────────────────────────
   const [navOpen, setNavOpen] = useState(false);
@@ -120,21 +111,39 @@ export default function Main({
   }, [activeDate]);
 
   useEffect(() => {
-    if (!topMenuOpen) return;
-    function onClick(e: MouseEvent) {
-      if (topMenuRef.current && !topMenuRef.current.contains(e.target as Node)) setTopMenuOpen(false);
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [topMenuOpen]);
-
-
-  useEffect(() => {
     function check() { setLeftBarOpen(window.innerWidth >= COLLAPSE_WIDTH); }
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  useEffect(() => {
+    function checkFullscreen() {
+      const apiFS = !!document.fullscreenElement;
+      // Native OS fullscreen hides the browser chrome, so innerHeight ≈ outerHeight
+      const nativeFS = window.outerHeight > 0 && (window.outerHeight - window.innerHeight) < 10;
+      setIsFullscreen(apiFS || nativeFS);
+    }
+    document.addEventListener("fullscreenchange", checkFullscreen);
+    window.addEventListener("resize", checkFullscreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", checkFullscreen);
+      window.removeEventListener("resize", checkFullscreen);
+    };
+  }, []);
+
+  const effectiveLeftOpen = leftBarOpen && !isFullscreen;
+
+  // Reset hover state synchronously before paint when sidebar hides,
+  // so CSS hover can't re-show it in the same frame.
+  useLayoutEffect(() => {
+    if (!effectiveLeftOpen) {
+      setPeekabooHovered(false);
+      setPeekabooMenuOpen(false);
+    }
+  }, [effectiveLeftOpen]);
+
+  const peekabooVisible = !effectiveLeftOpen && (peekabooHovered || peekabooMenuOpen);
 
   // ── Data ─────────────────────────────────────────────────────────────
   async function switchDay(date: string) {
@@ -234,32 +243,14 @@ export default function Main({
         className="flex-1 min-h-0 flex flex-col overflow-hidden sm:flex-row sm:py-4 sm:pl-4 sm:gap-4"
         style={{ minHeight: 0 } as React.CSSProperties}
       >
-        {/* Desktop sidebar */}
+        {/* Desktop sidebar spacer — offsets content; actual LeftBar rendered fixed below */}
         <div
           className="hidden sm:block flex-shrink-0 transition-all duration-300"
           style={{
             width: "256px",
-            marginLeft: leftBarOpen ? "0px" : "-256px",
-            opacity: leftBarOpen ? 1 : 0,
-            pointerEvents: leftBarOpen ? "auto" : "none",
+            marginLeft: effectiveLeftOpen ? "0px" : "-256px",
           }}
-        >
-          <LeftBar
-            todayISO={todayISO}
-            weekDates={weekDates}
-            activeDate={activeDate}
-            onSelectDate={switchDay}
-            collections={collections}
-            activeModeId={activeModeId}
-            onSelectMode={setActiveModeId}
-            items={items}
-            onHide={() => setLeftBarOpen(false)}
-            wideMode={wideMode}
-            onToggleWide={() => setWideMode((w) => !w)}
-            theme={theme}
-            onSetTheme={setTheme}
-          />
-        </div>
+        />
 
         {/* Content column — blurred on mobile when nav open */}
         <div
@@ -294,38 +285,14 @@ export default function Main({
             onFocus={() => setEditorFocused(true)}
             onBlur={() => setEditorFocused(false)}
           >
-            {/* Desktop toolbar — floats to the left, starting below the date header */}
-            <div className="hidden md:flex flex-col gap-2 pl-2 pr-2 flex-shrink-0 items-center" style={{ paddingTop: toolbarTop + 6 }}>
-              {([
-                { label: "Task",    icon: <CheckSquare className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.insertLinePrefix("[] ") },
-                { label: "Event",   icon: <Calendar className="w-4 h-4" strokeWidth={2.5} />,    action: () => editorRef.current?.insertLinePrefix("+ ") },
-                { label: "Section", icon: <Heading className="w-4 h-4" strokeWidth={2.5} />,     action: () => editorRef.current?.insertLinePrefix("## ") },
-                { label: "Bold",    icon: <Bold className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.wrapSelection("*", "*") },
-                { label: "Italic",  icon: <Italic className="w-4 h-4" strokeWidth={2.5} />,      action: () => editorRef.current?.wrapSelection("_", "_") },
-                { label: "Strike",  icon: <Strikethrough className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.wrapSelection("~~", "~~") },
-                { label: "Code",    icon: <CodeXml className="w-4 h-4" strokeWidth={2.5} />,     action: () => editorRef.current?.wrapSelection("`", "`") },
-                { label: "Link",    icon: <Link className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.wrapSelection("[", "](url)") },
-                { label: "Quote",   icon: <Quote className="w-4 h-4" strokeWidth={2.5} />,       action: () => editorRef.current?.insertLinePrefix("> ") },
-                { label: "List",    icon: <List className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.insertLinePrefix("- ") },
-                { label: "Ordered", icon: <ListOrdered className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.insertLinePrefix("1. ") },
-                { label: "Rule",    icon: <Minus className="w-4 h-4" strokeWidth={2.5} />,       action: () => editorRef.current?.insertLine("---") },
-              ] as const).map((tool) => (
-                <Tooltip key={tool.label}>
-                  <TooltipTrigger
-                    onClick={tool.action}
-                    className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground border border-border hover:text-foreground hover:bg-accent transition-colors"
-                  >
-                    {tool.icon}
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">{tool.label}</TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-
-            <div className={`flex flex-col overflow-hidden flex-1 lg:flex-none transition-all duration-300 ${wideMode ? "lg:flex-1" : "lg:w-[960px]"}`}>
+            <div className={`relative flex flex-col overflow-hidden transition-all duration-300 ${
+              isFullscreen
+                ? "flex-none w-full max-w-[680px]"
+                : `flex-1 ${wideMode ? "lg:flex-1" : "lg:flex-none lg:w-[960px]"}`
+            }`}>
               {/* DESKTOP: Top bar — inside the content column so it aligns with the editor */}
               <div className="hidden sm:flex flex-shrink-0">
-                <div ref={headerRef} className="flex items-center justify-between pl-2 pr-6 py-4 border-b border-border w-full">
+                <div className="flex items-center justify-between pl-2 pr-6 py-4 border-b border-border w-full">
                   <div>
                     <p className={`text-[11px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
                       {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
@@ -336,7 +303,36 @@ export default function Main({
                 </div>
               </div>
 
-              <div className={`flex overflow-hidden flex-1 min-w-0`}>
+              <div className="relative flex overflow-hidden flex-1 min-w-0">
+                {/* Desktop toolbar — floats inside editor, top, horizontal */}
+                <div className="hidden md:flex absolute top-0 left-0 right-0 z-10 flex-row gap-1 pl-4 pr-3 py-2.5 pointer-events-none">
+                  <div className="flex flex-row gap-1 pointer-events-auto">
+                    {([
+                      { label: "Task",    icon: <CheckSquare className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.insertLinePrefix("[] ") },
+                      { label: "Event",   icon: <Calendar className="w-4 h-4" strokeWidth={2.5} />,    action: () => editorRef.current?.insertLinePrefix("+ ") },
+                      { label: "Section", icon: <Heading className="w-4 h-4" strokeWidth={2.5} />,     action: () => editorRef.current?.insertLinePrefix("## ") },
+                      { label: "Bold",    icon: <Bold className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.wrapSelection("*", "*") },
+                      { label: "Italic",  icon: <Italic className="w-4 h-4" strokeWidth={2.5} />,      action: () => editorRef.current?.wrapSelection("_", "_") },
+                      { label: "Strike",  icon: <Strikethrough className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.wrapSelection("~~", "~~") },
+                      { label: "Code",    icon: <CodeXml className="w-4 h-4" strokeWidth={2.5} />,     action: () => editorRef.current?.wrapSelection("`", "`") },
+                      { label: "Link",    icon: <Link className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.wrapSelection("[", "](url)") },
+                      { label: "Quote",   icon: <Quote className="w-4 h-4" strokeWidth={2.5} />,       action: () => editorRef.current?.insertLinePrefix("> ") },
+                      { label: "List",    icon: <List className="w-4 h-4" strokeWidth={2.5} />,        action: () => editorRef.current?.insertLinePrefix("- ") },
+                      { label: "Ordered", icon: <ListOrdered className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.insertLinePrefix("1. ") },
+                      { label: "Rule",    icon: <Minus className="w-4 h-4" strokeWidth={2.5} />,       action: () => editorRef.current?.insertLine("---") },
+                    ] as const).map((tool) => (
+                      <Tooltip key={tool.label}>
+                        <TooltipTrigger
+                          onClick={tool.action}
+                          className="flex items-center justify-center py-1.5 px-2.5 rounded-md text-muted-foreground bg-background/60 backdrop-blur-md border border-border/40 hover:text-foreground hover:bg-accent/80 transition-colors"
+                        >
+                          {tool.icon}
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">{tool.label}</TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </div>
               <Editor
                 ref={editorRef}
                 dayId={currentDay.id}
@@ -344,8 +340,8 @@ export default function Main({
                 events={dayEvents}
                 cursorColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
               />
-              {/* lg+: rightbar always in flow */}
-              <div className="hidden lg:flex flex-shrink-0">
+              {/* lg+: rightbar always in flow (hidden in fullscreen — peekaboo takes over) */}
+              <div className={`flex-shrink-0 ${isFullscreen ? "hidden" : "hidden lg:flex"}`}>
                 <RightBar
                   events={dayEvents}
                   tasks={allTasks}
@@ -362,9 +358,9 @@ export default function Main({
         </div>
       </SidebarProvider>
 
-      {/* ── TABLET (md→lg): Hover-triggered right panel ───────────────── */}
-      <div className="group/rightbar hidden sm:block lg:hidden fixed right-0 top-0 bottom-0 w-4 z-40">
-        <div className="absolute right-4 top-4 bottom-4 w-72 translate-x-[calc(100%+1rem)] group-hover/rightbar:translate-x-0 transition-transform duration-300 ease-out bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden">
+      {/* ── TABLET (sm→lg) + FULLSCREEN: Hover-triggered right panel ─── */}
+      <div className={`group/rightbar hidden sm:block ${isFullscreen ? "" : "lg:hidden"} fixed right-0 top-0 bottom-0 w-4 z-40`}>
+        <div className="absolute right-4 top-4 bottom-4 w-80 translate-x-[calc(100%+1rem)] group-hover/rightbar:translate-x-0 transition-transform duration-300 ease-out bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden">
           <RightBar
             events={dayEvents}
             tasks={allTasks}
@@ -373,6 +369,7 @@ export default function Main({
             onToggleTask={toggleTask}
             activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
             activeModeName={activeModeId ? (collections.find((c) => c.id === activeModeId)?.name) : undefined}
+            peekaboo
           />
         </div>
       </div>
@@ -594,53 +591,38 @@ export default function Main({
         </div>
       </div>
 
-      {/* ── DESKTOP: Collapsed sidebar button — peekaboo on hover ──────── */}
+      {/* ── DESKTOP: Single LeftBar — docked when open, peekaboo when hidden ── */}
       <div
-        className="group/leftbtn hidden sm:block fixed left-0 top-0 bottom-0 w-10 z-50 transition-opacity duration-200"
-        style={{
-          opacity: leftBarOpen ? 0 : 1,
-          pointerEvents: leftBarOpen ? "none" : "auto",
-          transitionDelay: leftBarOpen ? "0ms" : "150ms",
-        }}
+        className="hidden sm:block fixed left-0 top-0 bottom-0 z-50"
+        style={{ width: effectiveLeftOpen ? "272px" : "12px" }}
+        onMouseEnter={() => { if (!effectiveLeftOpen) setPeekabooHovered(true); }}
+        onMouseLeave={() => setPeekabooHovered(false)}
       >
-        <div
-          className="absolute top-[22px] left-0 -translate-x-full group-hover/leftbtn:translate-x-4 transition-transform duration-300 ease-out"
-          ref={topMenuRef}
-        >
-          <div className={`rounded-xl w-9 h-9 flex items-center justify-center transition-colors ${topMenuOpen ? "bg-sidebar-accent" : "bg-transparent hover:bg-sidebar-accent"}`}>
-            <button
-              onClick={() => setTopMenuOpen((o) => !o)}
-              className="text-muted-foreground/40 hover:text-sidebar-foreground transition-colors p-1 rounded"
-            >
-              <PanelLeft className="w-4 h-4" />
-            </button>
-          </div>
-          {topMenuOpen && (
-            <div className="absolute left-0 top-full mt-1 w-48 bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl z-50 py-1 overflow-hidden">
-              <button
-                onClick={() => { setLeftBarOpen(true); setTopMenuOpen(false); }}
-                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
-              >
-                <SquareChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                Show sidebar
-              </button>
-              <button
-                onClick={() => { setWideMode((w) => !w); setTopMenuOpen(false); }}
-                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-foreground hover:bg-sidebar-accent transition-colors"
-              >
-                <UnfoldHorizontal className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                <span className="flex-1 text-left">Full width</span>
-                <div className={`relative w-7 h-4 rounded-full transition-colors flex-shrink-0 ${wideMode ? "bg-primary" : "bg-sidebar-border"}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${wideMode ? "left-[14px]" : "left-0.5"}`} />
-                </div>
-              </button>
-              <div className="h-px bg-sidebar-border mx-2 mt-1" />
-              <div className="px-3 py-2">
-                <p className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">Display</p>
-                {themeButtons}
-              </div>
-            </div>
-          )}
+        <div className={`absolute top-4 bottom-4 w-64 transition-transform duration-300 ease-out ${
+          effectiveLeftOpen
+            ? "left-4 translate-x-0"
+            : `left-3 ${peekabooVisible ? "translate-x-0" : "-translate-x-[calc(100%+0.75rem)]"} bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl`
+        }`}>
+          <SidebarProvider className="h-full" style={{ minHeight: 0 } as React.CSSProperties}>
+            <LeftBar
+              todayISO={todayISO}
+              weekDates={weekDates}
+              activeDate={activeDate}
+              onSelectDate={switchDay}
+              collections={collections}
+              activeModeId={activeModeId}
+              onSelectMode={setActiveModeId}
+              items={items}
+              onHide={() => setLeftBarOpen(!effectiveLeftOpen)}
+              wideMode={wideMode}
+              onToggleWide={() => setWideMode((w) => !w)}
+              theme={theme}
+              onSetTheme={setTheme}
+              peekaboo={!effectiveLeftOpen}
+              onMenuOpenChange={setPeekabooMenuOpen}
+              activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
+            />
+          </SidebarProvider>
         </div>
       </div>
 

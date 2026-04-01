@@ -599,14 +599,14 @@ const brainTheme = EditorView.theme({
   "&": { height: "100%", outline: "none", biackground: "transparent" },
   ".cm-scroller": { fontFamily: "inherit", lineHeight: "1.65", overflowX: "hidden", overflowY: "auto", height: "100%" },
   ".cm-content": {
-    padding: "1rem 1rem 1rem 0.5rem",
+    padding: "3rem 1rem 1rem 0.5rem",
     caretColor: "transparent",
     color: "var(--foreground)",
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
   },
   ".cm-line": { paddingLeft: "1.5rem" },
-  ".cm-cursor, .cm-dropCursor": { display: "block", borderLeftStyle: "solid", borderLeftWidth: "2px", borderLeftColor: "var(--cm-cursor-color, var(--muted-foreground))" },
+  "&.cm-focused .cm-cursor, &.cm-focused .cm-dropCursor": { display: "block", borderLeftStyle: "solid", borderLeftWidth: "2px", borderLeftColor: "var(--cm-cursor-color, var(--muted-foreground))" },
   ".cm-selectionBackground": { background: "oklch(1 0 0 / 0.08) !important" },
   "&.cm-focused .cm-selectionBackground": { background: "oklch(1 0 0 / 0.11) !important" },
   ".cm-content ::selection": { background: "transparent" },
@@ -702,16 +702,25 @@ function makeEnterHandler(): (view: EditorView) => boolean {
     const line = view.state.doc.lineAt(head);
     const textBefore = line.text.slice(0, head - line.from);
 
-    const taskMatch = textBefore.match(/^\[[xX ]?\] /);
-    const ulMatch = textBefore.match(/^[-*] /);
-    const olMatch = textBefore.match(/^(\d+)\. /);
-    const eventMatch = textBefore.match(/^\+ /);
+    // Code fence: ``` → insert closing fence with blank line in between
+    if (line.text.trimEnd() === "```" && head === line.to) {
+      view.dispatch({
+        changes: { from: head, insert: "\n\n```" },
+        selection: { anchor: head + 1 },
+      });
+      return true;
+    }
+
+    const taskMatch  = textBefore.match(/^(\s*)\[[ xX]?\] /);
+    const ulMatch    = textBefore.match(/^(\s*)[-*] /);
+    const olMatch    = textBefore.match(/^(\s*)(\d+)\. /);
+    const eventMatch = textBefore.match(/^(\s*)\+ /);
 
     let prefix = ""; let prefixLen = 0;
-    if (taskMatch)       { prefix = "[] ";                             prefixLen = taskMatch[0].length; }
-    else if (ulMatch)    { prefix = ulMatch[0];                        prefixLen = prefix.length; }
-    else if (eventMatch) { prefix = "+ ";                              prefixLen = 2; }
-    else if (olMatch)    { prefix = `${parseInt(olMatch[1]) + 1}. `;   prefixLen = olMatch[0].length; }
+    if (taskMatch)       { prefix = taskMatch[1]  + "[] ";                                   prefixLen = taskMatch[0].length; }
+    else if (ulMatch)    { prefix = ulMatch[0];                                               prefixLen = prefix.length; }
+    else if (eventMatch) { prefix = eventMatch[1] + "+ ";                                    prefixLen = eventMatch[0].length; }
+    else if (olMatch)    { prefix = olMatch[1]    + `${parseInt(olMatch[2]) + 1}. `;         prefixLen = olMatch[0].length; }
     if (!prefix) return false;
 
     const lineContent = line.text.slice(prefixLen).trim();
@@ -720,6 +729,27 @@ function makeEnterHandler(): (view: EditorView) => boolean {
       return true;
     }
     view.dispatch({ changes: { from: head, insert: "\n" + prefix }, selection: { anchor: head + 1 + prefix.length } });
+    return true;
+  };
+}
+
+function makeTabHandler(dedent: boolean): (view: EditorView) => boolean {
+  return (view) => {
+    const { head } = view.state.selection.main;
+    const line = view.state.doc.lineAt(head);
+    if (!line.text.match(/^\s*([-*] |\[[ xX]?\] |\d+\. |\+ )/)) return false;
+    if (dedent) {
+      if (line.text.length < 2 || line.text.slice(0, 2) !== "  ") return false;
+      view.dispatch({
+        changes: { from: line.from, to: line.from + 2, insert: "" },
+        selection: { anchor: Math.max(line.from, head - 2) },
+      });
+    } else {
+      view.dispatch({
+        changes: { from: line.from, to: line.from, insert: "  " },
+        selection: { anchor: head + 2 },
+      });
+    }
     return true;
   };
 }
@@ -758,6 +788,8 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   useEffect(() => {
     if (!editorDomRef.current) return;
     const enterHandler = makeEnterHandler();
+    const tabHandler = makeTabHandler(false);
+    const shiftTabHandler = makeTabHandler(true);
     const view = new EditorView({
       state: EditorState.create({
         doc: initialBody,
@@ -765,7 +797,7 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
         extensions: [
           history(),
           drawSelection(),
-          keymap.of([{ key: "Enter", run: enterHandler }, ...historyKeymap, ...defaultKeymap]),
+          keymap.of([{ key: "Enter", run: enterHandler }, { key: "Tab", run: tabHandler }, { key: "Shift-Tab", run: shiftTabHandler }, ...historyKeymap, ...defaultKeymap]),
           foldState,
           foldDecorations,
           headingLineDeco,
@@ -975,13 +1007,13 @@ const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
   ));
 
   return (
-    <div className={`flex flex-col flex-1 overflow-hidden md:border-r md:border-border${className ? ` ${className}` : ""}`}>
+    <div className={`flex flex-col flex-1 overflow-hidden${className ? ` ${className}` : ""}`}>
         <div className="relative flex-1 overflow-hidden cursor-text" onClick={() => cmRef.current?.focus()}>
           <div className={`absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none z-10 transition-opacity duration-300 ${atBottom ? "opacity-0" : "opacity-100"}`} />
           {!hasContent && (
             <p
-              className="absolute pointer-events-none select-none text-base leading-relaxed transition-opacity duration-300"
-              style={{ top: "1rem", left: "1rem", color: "var(--muted-foreground)", opacity: focused ? 0 : 0.2 }}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none select-none text-base leading-relaxed transition-opacity duration-300"
+              style={{ color: "var(--muted-foreground)", opacity: focused ? 0 : 0.2 }}
             >
               Start brain dumping…
             </p>
