@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, ClipboardList, Layers, Square, SquareCheck, SquareChevronRight } from "lucide-react";
+import { Calendar, ClipboardList, Layers, Square, SquareCheck } from "lucide-react";
 import { AirtableItem } from "@/lib/airtable";
 
 interface RightBarProps {
@@ -65,7 +65,7 @@ function TaskRow({
   );
 }
 
-export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor, activeModeName, peekaboo, onHide }: RightBarProps) {
+export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor, activeModeName, peekaboo, onHide: _onHide }: RightBarProps) {
   const pastDue   = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
