@@ -219,10 +219,12 @@ class CheckboxWidget extends WidgetType {
     span.addEventListener("mousedown", (e) => {
       e.preventDefault();
       const line = view.state.doc.lineAt(this.lineFrom);
-      if (line.text.startsWith("[] ")) {
-        view.dispatch({ changes: { from: line.from, to: line.from + 3, insert: "[x] " } });
+      const indent = line.text.match(/^(\s*)/)?.[1].length ?? 0;
+      const rest = line.text.slice(indent);
+      if (rest.startsWith("[] ")) {
+        view.dispatch({ changes: { from: line.from + indent, to: line.from + indent + 3, insert: "[x] " } });
       } else {
-        view.dispatch({ changes: { from: line.from, to: line.from + 4, insert: "[] " } });
+        view.dispatch({ changes: { from: line.from + indent, to: line.from + indent + 4, insert: "[] " } });
       }
     });
     return span;
@@ -399,12 +401,11 @@ function buildPrefixAtomicRanges(view: EditorView): DecorationSet {
       builder.add(line.from, line.from + hInfo.prefix.length, Decoration.replace({}));
       continue;
     }
-    if (text.startsWith("[] ")) {
-      builder.add(line.from, line.from + 3, Decoration.replace({}));
-      continue;
-    }
-    if (text.startsWith("[x] ") || text.startsWith("[X] ")) {
-      builder.add(line.from, line.from + 4, Decoration.replace({}));
+    const atomicTaskMatch = text.match(/^(\s*)(\[[ xX]?\] )/);
+    if (atomicTaskMatch) {
+      const indentLen = atomicTaskMatch[1].length;
+      const bracketLen = atomicTaskMatch[2].length;
+      builder.add(line.from + indentLen, line.from + indentLen + bracketLen, Decoration.replace({}));
       continue;
     }
     if (/^[-*] /.test(text)) {
@@ -468,17 +469,19 @@ function buildDecorations(view: EditorView): DecorationSet {
     }
 
     // ── Tasks ─────────────────────────────────────────────────────────────
-    const isUnchecked = text.startsWith("[] ");
-    const isChecked = text.startsWith("[x] ") || text.startsWith("[X] ");
-    if (isUnchecked || isChecked) {
-      const prefixLen = isChecked ? 4 : 3;
-      const contentStart = line.from + prefixLen;
-      builder.add(line.from, contentStart, Decoration.replace({ widget: new CheckboxWidget(isChecked, line.from) }));
+    const taskMatch = text.match(/^(\s*)(\[[ xX]?\] )/);
+    if (taskMatch) {
+      const indentLen = taskMatch[1].length;
+      const prefix = taskMatch[2];
+      const isChecked = prefix[1] === "x" || prefix[1] === "X";
+      const bracketStart = line.from + indentLen;
+      const contentStart = bracketStart + prefix.length;
+      builder.add(bracketStart, contentStart, Decoration.replace({ widget: new CheckboxWidget(isChecked, line.from) }));
       if (isChecked && contentStart < line.to) {
         builder.add(contentStart, line.to, Decoration.mark({ class: "cm-task-done" }));
       }
       if (!isChecked && contentStart < line.to) {
-        addInlineMarks(builder, contentStart, text.slice(prefixLen));
+        addInlineMarks(builder, contentStart, text.slice(indentLen + prefix.length));
       }
       continue;
     }

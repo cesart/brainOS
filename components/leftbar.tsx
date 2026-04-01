@@ -146,7 +146,7 @@ export default function LeftBar({
   return (
     <Sidebar collapsible="none" className={`rounded-2xl h-full w-64 flex-shrink-0 p-2${peekaboo ? " !bg-transparent" : ""}`}>
       {/* Header */}
-      <SidebarHeader className="flex flex-row items-center justify-between px-2 py-2">
+      <SidebarHeader className="group/header flex flex-row items-center justify-between px-2 py-2">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-sidebar-accent flex items-center justify-center flex-shrink-0">
             <Brain className="w-4 h-4 text-sidebar-accent-foreground transition-colors" style={activeModeColor ? { color: activeModeColor } : {}} />
@@ -157,7 +157,7 @@ export default function LeftBar({
         <div className="relative" ref={menuTriggerRef}>
           <button
             onClick={openMenu}
-            className="text-muted-foreground hover:text-sidebar-foreground transition-colors p-1 rounded"
+            className="opacity-0 group-hover/header:opacity-100 text-muted-foreground hover:text-sidebar-foreground transition-all p-1 rounded"
           >
             <PanelLeft className="w-4 h-4" />
           </button>

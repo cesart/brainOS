@@ -68,6 +68,7 @@ export default function Main({
 
   // ── Desktop ─────────────────────────────────────────────────────────
   const [leftBarOpen, setLeftBarOpen] = useState(true);
+  const [rightBarOpen, setRightBarOpen] = useState(true);
   const [wideMode, setWideMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [peekabooHovered, setPeekabooHovered] = useState(false);
@@ -133,6 +134,7 @@ export default function Main({
   }, []);
 
   const effectiveLeftOpen = leftBarOpen && !isFullscreen;
+  const effectiveRightOpen = rightBarOpen && !isFullscreen;
 
   // Reset hover state synchronously before paint when sidebar hides,
   // so CSS hover can't re-show it in the same frame.
@@ -340,8 +342,8 @@ export default function Main({
                 events={dayEvents}
                 cursorColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
               />
-              {/* lg+: rightbar always in flow (hidden in fullscreen — peekaboo takes over) */}
-              <div className={`flex-shrink-0 ${isFullscreen ? "hidden" : "hidden lg:flex"}`}>
+              {/* lg+: rightbar in flow when open */}
+              <div className={`flex-shrink-0 ${effectiveRightOpen ? "hidden lg:flex" : "hidden"}`}>
                 <RightBar
                   events={dayEvents}
                   tasks={allTasks}
@@ -350,6 +352,7 @@ export default function Main({
                   onToggleTask={toggleTask}
                   activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
                   activeModeName={activeModeId ? (collections.find((c) => c.id === activeModeId)?.name) : undefined}
+                  onHide={() => setRightBarOpen(false)}
                 />
               </div>
             </div>
@@ -359,7 +362,7 @@ export default function Main({
       </SidebarProvider>
 
       {/* ── TABLET (sm→lg) + FULLSCREEN: Hover-triggered right panel ─── */}
-      <div className={`group/rightbar hidden sm:block ${isFullscreen ? "" : "lg:hidden"} fixed right-0 top-0 bottom-0 w-4 z-40`}>
+      <div className={`group/rightbar hidden sm:block ${effectiveRightOpen ? "lg:hidden" : ""} fixed right-0 top-0 bottom-0 w-4 z-40`}>
         <div className="absolute right-4 top-4 bottom-4 w-80 translate-x-[calc(100%+1rem)] group-hover/rightbar:translate-x-0 transition-transform duration-300 ease-out bg-background/95 backdrop-blur-xl border border-sidebar-border rounded-2xl overflow-hidden">
           <RightBar
             events={dayEvents}

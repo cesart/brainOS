@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, ClipboardList, Layers, Square, SquareCheck } from "lucide-react";
+import { Calendar, ClipboardList, Layers, Square, SquareCheck, SquareChevronRight } from "lucide-react";
 import { AirtableItem } from "@/lib/airtable";
 
 interface RightBarProps {
@@ -12,6 +12,7 @@ interface RightBarProps {
   activeModeColor?: string;
   activeModeName?: string;
   peekaboo?: boolean;
+  onHide?: () => void;
 }
 
 function daysDiff(dueDate: string, todayISO: string): number {
@@ -64,7 +65,7 @@ function TaskRow({
   );
 }
 
-export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor, activeModeName, peekaboo }: RightBarProps) {
+export default function RightBar({ events, tasks, todayISO, activeDate, onToggleTask, activeModeColor, activeModeName, peekaboo, onHide }: RightBarProps) {
   const pastDue   = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) < 0);
   const dueToday  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) === 0);
   const upcoming  = tasks.filter((t) => !t.completed && t.dueDate && daysDiff(t.dueDate, todayISO) > 0);
@@ -78,7 +79,16 @@ export default function RightBar({ events, tasks, todayISO, activeDate, onToggle
       <div className="flex-shrink-0">
         <div className="flex items-center gap-2 pl-3 pr-0 py-3">
           <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Overview</span>
+          <span className="text-sm font-medium text-foreground flex-1">Overview</span>
+          {/* TODO: hide rightbar button — wire up properly before re-enabling */}
+          {/* {onHide && (
+            <button
+              onClick={onHide}
+              className="p-1 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            >
+              <SquareChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )} */}
         </div>
         <div className={`h-px bg-sidebar-border ${peekaboo ? "mr-1" : ""}`} />
       </div>
