@@ -307,7 +307,7 @@ export default function Main({
 
               <div className="relative flex overflow-hidden flex-1 min-w-0">
                 {/* Desktop toolbar — floats inside editor, top, horizontal */}
-                <div className="hidden md:flex absolute top-0 left-0 right-0 z-10 flex-row gap-1 pl-4 pr-3 py-2.5 pointer-events-none">
+                <div className="flex absolute top-0 left-0 right-0 z-10 flex-row gap-1 pl-4 pr-3 py-2.5 pointer-events-none">
                   <div className="flex flex-row gap-1 pointer-events-auto">
                     {([
                       { label: "Task",    icon: <CheckSquare className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.insertLinePrefix("[] ") },
