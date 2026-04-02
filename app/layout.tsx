@@ -11,6 +11,7 @@ export const metadata: Metadata = {
     title: "brainOS",
   },
   icons: {
+    icon: "/icon",
     apple: "/apple-touch-icon.png",
   },
 };
