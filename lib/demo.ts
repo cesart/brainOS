@@ -14,11 +14,10 @@ export const DEMO_BODY = `\`\`\`
 
 Feel free to explore: write in the editor, add tasks, lists, code, and other text. You can navigate in the Agenda and I'll soon be extending the functionality of Modes. Make sure to check out the repo on [GitHub](https://github.com/cesart/brainOS). Thanks for looking! 👀
 
+> ⚠️ This is only intended as a live demo of a tool I use personally for my notes — nothing you write here will be saved! Refresh the page to reset.
+ ---
 ⌖ Made by [Cesar Torres](https://cesart.me) & Claude
 cesar@studiohouse.nyc
----
-> ⚠️ This is only intended as a live demo of a tool I use personally for my notes — nothing you write here will be saved.! Refresh the page to reset.
-
 `;
 
 export const DEMO_COLLECTIONS = [
