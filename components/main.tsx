@@ -196,6 +196,9 @@ export default function Main({
     weekday: "short", month: "short", day: "numeric",
   });
   const isWeekAtToday = weekViewStart === todayISO;
+  const mobileVisibleTaskCount = pastDue.length + dueToday.length + upcoming.length + noDate.length + completedToday.length;
+  const activeModeColor = activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined;
+  const activeModeName  = activeModeId ? (collections.find((c) => c.id === activeModeId)?.name) : undefined;
   const rollingDates  = [0, 1, 2, 3, 4].map((i) => addDays(weekViewStart, i));
 
   const themeButtons = <Display theme={theme} onSetTheme={setTheme} />;
@@ -214,7 +217,7 @@ export default function Main({
         }}
       >
         <div className="overflow-hidden">
-          <div className="flex items-center px-4 py-4 bg-sidebar border-b border-sidebar-border">
+          <div className="flex items-center px-4 py-4 bg-sidebar">
             <div className="flex items-center gap-2.5 flex-1">
               <div className="w-8 h-8 rounded-[10px] bg-sidebar-accent flex items-center justify-center flex-shrink-0">
                 <Brain className="w-4 h-4 text-sidebar-accent-foreground" />
@@ -260,24 +263,15 @@ export default function Main({
           style={{ filter: (navOpen || overviewOpen) ? "blur(5px)" : "none" }}
         >
           {/* MOBILE: Date/time bar */}
-          <div
-            className="sm:hidden grid flex-shrink-0"
-            style={{
-              gridTemplateRows: editorFocused ? "0fr" : "1fr",
-              opacity: editorFocused ? 0 : 1,
-              transition: "grid-template-rows 0.3s ease, opacity 0.3s ease",
-            }}
-          >
-            <div className="overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-                <div>
-                  <p className={`text-[11px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
-                    {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
-                  </p>
-                  <h1 className="text-[24px] font-medium leading-tight">{dateLabel}</h1>
-                </div>
-                <span className="text-[11px] text-muted-foreground tabular-nums font-mono tracking-[0.15em]"><Clock /></span>
+          <div className="sm:hidden flex-shrink-0">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+              <div>
+                <p className={`text-[11px] font-mono tracking-[0.15em] uppercase text-muted-foreground ${isToday ? "opacity-100" : "opacity-35"}`}>
+                  {isToday ? "Today" : activeDate < todayISO ? "Past" : "Future"}
+                </p>
+                <h1 className="text-[24px] font-medium leading-tight">{dateLabel}</h1>
               </div>
+              <span className="text-[11px] text-muted-foreground tabular-nums font-mono tracking-[0.15em]"><Clock /></span>
             </div>
           </div>
 
@@ -306,9 +300,10 @@ export default function Main({
               </div>
 
               <div className="relative flex overflow-hidden flex-1 min-w-0">
-                {/* Desktop toolbar — floats inside editor, top, horizontal */}
-                <div className="flex absolute top-0 left-0 right-0 z-10 flex-row gap-1 pl-4 pr-3 py-2.5 pointer-events-none">
-                  <div className="flex flex-row gap-1 pointer-events-auto">
+                {/* Toolbar — floats inside editor, top, horizontal, scrollable on mobile */}
+                <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none py-2.5">
+                  <div className="overflow-x-auto pointer-events-auto pl-4 pr-3">
+                  <div className="flex flex-row gap-1 w-max">
                     {([
                       { label: "Task",    icon: <CheckSquare className="w-4 h-4" strokeWidth={2.5} />, action: () => editorRef.current?.insertLinePrefix("[] ") },
                       { label: "Event",   icon: <Calendar className="w-4 h-4" strokeWidth={2.5} />,    action: () => editorRef.current?.insertLinePrefix("+ ") },
@@ -334,6 +329,7 @@ export default function Main({
                       </Tooltip>
                     ))}
                   </div>
+                  </div>
                 </div>
               <Editor
                 ref={editorRef}
@@ -350,8 +346,8 @@ export default function Main({
                   todayISO={todayISO}
                   activeDate={activeDate}
                   onToggleTask={toggleTask}
-                  activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
-                  activeModeName={activeModeId ? (collections.find((c) => c.id === activeModeId)?.name) : undefined}
+                  activeModeColor={activeModeColor}
+                  activeModeName={activeModeName}
                   onHide={() => setRightBarOpen(false)}
                 />
               </div>
@@ -370,8 +366,8 @@ export default function Main({
             todayISO={todayISO}
             activeDate={activeDate}
             onToggleTask={toggleTask}
-            activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
-            activeModeName={activeModeId ? (collections.find((c) => c.id === activeModeId)?.name) : undefined}
+            activeModeColor={activeModeColor}
+            activeModeName={activeModeName}
             peekaboo
           />
         </div>
@@ -396,20 +392,21 @@ export default function Main({
           maxHeight: "60dvh",
         }}
       >
-        <div className="flex items-center gap-2 px-3 py-3 border-b border-sidebar-border flex-shrink-0">
-          <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Overview</span>
+        <div className="flex-shrink-0 p-2 pb-0">
+          <div className="flex items-center gap-2 px-2 py-2 border-b border-sidebar-border">
+            <ClipboardList className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">Overview</span>
+          </div>
         </div>
         <div className="overflow-y-auto flex flex-col gap-4 p-2">
           {dayEvents.length > 0 && (
             <section>
               <div className="flex items-center gap-1.5 px-1.5 pb-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
                 <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Events</p>
               </div>
               <div className="flex flex-col gap-0.5">
                 {dayEvents.map((event) => (
-                  <div key={event.id} className="flex items-center gap-2.5 px-1.5 py-2 rounded-md">
+                  <div key={event.id} className="flex items-center gap-2.5 px-1.5 py-2 rounded-md hover:bg-accent/30 transition-colors">
                     <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                     <span className="text-sm text-foreground flex-1 min-w-0 truncate">{event.name}</span>
                     {event.dueDate && (
@@ -422,17 +419,17 @@ export default function Main({
               </div>
             </section>
           )}
-          {allTasks.length > 0 && (
+          {mobileVisibleTaskCount > 0 && (
             <section>
               <div className="flex items-center gap-1.5 px-1.5 pb-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground flex-shrink-0" style={activeModeColor ? { background: activeModeColor } : {}} />
                 <p className="text-[10px] font-normal tracking-[1.5px] text-muted-foreground uppercase">Tasks</p>
               </div>
               <div className="flex flex-col gap-0.5">
                 {[...pastDue, ...dueToday, ...upcoming, ...noDate, ...completedToday].map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer"
+                    className="flex items-start gap-2.5 px-1.5 py-2 rounded-md cursor-pointer hover:bg-accent/30 transition-colors"
                     style={t.completed ? { opacity: 0.75 } : {}}
                     onClick={() => toggleTask(t.id, !t.completed)}
                   >
@@ -448,8 +445,20 @@ export default function Main({
               </div>
             </section>
           )}
-          {dayEvents.length === 0 && allTasks.length === 0 && (
-            <p className="text-sm text-muted-foreground/50 text-center py-8">Nothing here yet.</p>
+          {dayEvents.length === 0 && mobileVisibleTaskCount === 0 && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <Layers className="w-14 h-14 text-muted" />
+              {activeModeId
+                ? <div className="flex items-center gap-1.5 text-sm text-muted font-medium flex-wrap justify-center text-center">
+                    <span>No events or tasks for</span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={activeModeColor ? { background: activeModeColor } : {}} />
+                      <span>{activeModeName}&hellip;</span>
+                    </span>
+                  </div>
+                : <p className="text-sm text-muted text-center">No events or tasks&hellip;</p>
+              }
+            </div>
           )}
         </div>
       </div>
@@ -509,11 +518,11 @@ export default function Main({
                 )}
               </div>
             </div>
-            <div className="flex gap-0.5 bg-sidebar-border/50 rounded-lg p-0.5">
+            <div className="flex gap-0.5 bg-sidebar-border/50 rounded-lg p-0.5 w-full">
               {(["month", "week"] as const).map((id) => (
                 <button
                   key={id} onClick={() => setAgendaView(id)}
-                  className={`flex-1 py-1 rounded-md text-[11px] font-medium transition-colors capitalize ${
+                  className={`flex-1 py-3 rounded-md text-[11px] font-medium transition-colors capitalize ${
                     agendaView === id
                       ? "bg-sidebar text-sidebar-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -623,7 +632,7 @@ export default function Main({
               onSetTheme={setTheme}
               peekaboo={!effectiveLeftOpen}
               onMenuOpenChange={setPeekabooMenuOpen}
-              activeModeColor={activeModeId ? (MODE_COLORS[collections.findIndex((c) => c.id === activeModeId)] ?? undefined) : undefined}
+              activeModeColor={activeModeColor}
             />
           </SidebarProvider>
         </div>
