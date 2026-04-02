@@ -118,10 +118,10 @@ export default function Calendar({
                 flex items-center justify-center text-[11px] font-mono h-6 w-full rounded transition-colors
                 ${overflow
                   ? isActive
-                    ? "bg-foreground text-background font-semibold opacity-50"
+                    ? "bg-primary text-primary-foreground font-semibold opacity-50"
                     : "text-foreground opacity-20 hover:opacity-50 hover:bg-sidebar-accent/60"
                   : isActive
-                    ? "bg-foreground text-background font-semibold"
+                    ? "bg-primary text-primary-foreground font-semibold"
                     : isToday
                     ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     : "text-foreground hover:bg-sidebar-accent/60"

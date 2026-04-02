@@ -157,7 +157,7 @@ export default function LeftBar({
         <div className="relative" ref={menuTriggerRef}>
           <button
             onClick={openMenu}
-            className="opacity-0 group-hover/header:opacity-100 text-muted-foreground hover:text-sidebar-foreground transition-all p-1 rounded"
+            className="text-muted-foreground hover:text-sidebar-foreground transition-all p-1 rounded"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
